@@ -1,46 +1,136 @@
-from typing import List
+import enum
 
-from fastapi import FastAPI
+from typing import Iterable, List, Optional
+
+from fastapi import Depends, HTTPException, FastAPI, Request, Response
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-api = FastAPI()
+from model.predictor import Instance, ModelConfig, Prediction, Predictor
 
 
-class Instance(BaseModel):
-    """Represents one object for which inference can be performed."""
-    field1: str = Field(description="Some string field of consequence for inference")
-    field2: float = Field(description="Some float field of consequence for inference")
+_predictor: Optional[Predictor] = None
 
 
-class Prediction(BaseModel):
-    """Represents the result of inference over one instance"""
-    classification: str = Field(description="Some predicted class in this simple example")
+def get_predictor() -> Predictor:
+    global _predictor
+
+    if not _predictor:
+        config = ModelConfig()
+        _predictor = Predictor(config=config)
+
+    return _predictor
 
 
-class InvocationsRequest(BaseModel):
-    """Represents the JSON body of a set of inference requests."""
-    instances: List[Instance] = Field(description="A list of Instances over which to perform inference")
+class ContentType(enum.Enum):
+    JSON = "application/json"
+    JSONLINES = "application/jsonlines"
 
 
-class InvocationsResponse(BaseModel):
-    """The results of inference over each passed instance"""
-    predictions: List[Prediction] = Field(description="The predictions")
+def make_app(batch_size: int = 1):
+    if int(batch_size) != batch_size or batch_size <= 0:
+        raise ValueError("Batch size must be positive integer")
+
+    class InvocationsRequest(BaseModel):
+        """Represents the JSON body of a set of inference requests."""
+
+        instances: List[Instance] = Field(
+            description="A list of Instances over which to perform inference"
+        )
+
+    class InvocationsResponse(BaseModel):
+        """The results of inference over each passed instance"""
+
+        predictions: List[Prediction] = Field(description="The predictions")
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def jsonl_invocations_handler(request: Request, call_next):
+        """Intercepts JSONLINES requests and routes to appropriate handler."""
+        accept = request.headers.get("accept")
+        content_type = request.headers.get("content-type")
+
+        if (
+            content_type == ContentType.JSONLINES.value
+            and accept == ContentType.JSONLINES.value
+        ):
+            scope = request.scope
+
+            if not scope["path"].endswith("_jsonl"):
+                scope["path"] += "_jsonl"
+                new_request = Request(scope, request.receive)
+                return await call_next(new_request)
+
+        elif (
+            content_type == ContentType.JSONLINES.value
+            or accept == ContentType.JSONLINES.value
+        ):
+            return Response(
+                content=f"Must pair {ContentType.JSONLINES.value} content-type with {ContentType.JSONLINES.value} accept",
+                status_code=400,
+            )
+
+        return await call_next(request)
+
+    @app.post("/invocations_jsonl")
+    async def invocations_jsonl(
+        req: Request, predictor: Predictor = Depends(get_predictor)
+    ) -> Response:
+        body_text = (await req.body()).decode()
+        lines = [line.strip() for line in body_text.split("\n") if line.strip()]
+        instances = [Instance.parse_raw(line) for line in lines]
+        json_req = InvocationsRequest(instances=instances)
+        json_resp = perform_invocations(json_req, predictor)
+
+        jsonl_resp = "\n".join(
+            [prediction.json() for prediction in json_resp.predictions]
+        )
+
+        return PlainTextResponse(jsonl_resp, media_type=ContentType.JSONLINES.value)
+
+    @app.post("/invocations")
+    async def invocations(
+        req: InvocationsRequest, predictor: Predictor = Depends(get_predictor)
+    ) -> InvocationsResponse:
+        resp = perform_invocations(req, predictor)
+        return resp
+
+    def perform_invocations(
+        req: InvocationsRequest, predictor: Predictor
+    ) -> InvocationsResponse:
+        predictions = []
+
+        for batch in _batchify(req.instances, batch_size):
+            prediction_batch = predictor.predict_batch(batch)
+            predictions.extend(prediction_batch)
+
+        return InvocationsResponse(predictions=predictions)
+
+    @app.get("/ping")
+    async def health_check():
+        return {"message": "Okalee-dokalee"}
+
+    return app
 
 
-@api.post("/invocations", )
-async def invocations(req: InvocationsRequest) -> InvocationsResponse:
-    """Accepts JSON or JSONL application types, returning the same MIME types"""
+def _batchify(
+    instances: Iterable[Instance], batch_size: int
+) -> Iterable[List[Instance]]:
+    current_batch = []
 
-    resp = InvocationsResponse(
-        predictions=[
-            Prediction(f"{inst.field1}:{inst.field2}")
-            for inst in req.instances
-        ]
-    )
+    for instance in instances:
+        current_batch.append(instance)
 
-    return resp
+        if len(current_batch) == batch_size:
+            to_yield = current_batch
+            current_batch = []
+            yield to_yield
+
+    if current_batch:
+        yield current_batch
 
 
-@api.get("/ping")
-async def health_check():
-    return {"message": "Okalee-dokalee"}
+def initialize_api(batch_size: int = 1):
+    get_predictor()
+    return make_app(batch_size=batch_size)
