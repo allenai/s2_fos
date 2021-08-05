@@ -1,5 +1,5 @@
 import enum
-
+import time
 from typing import Iterable, List, Optional
 
 from fastapi import Depends, HTTPException, FastAPI, Request, Response
@@ -44,6 +44,14 @@ def make_app(batch_size: int = 1):
         predictions: List[Prediction] = Field(description="The predictions")
 
     app = FastAPI()
+
+    @app.middleware("http")
+    async def add_request_processing_time(request: Request, call_next):
+        """Records total time (seconds) processing a request"""
+        start_time = time.monotonic()
+        response = await call_next(request)
+        response.headers["X-Processing-Time"] = str(time.monotonic() - start_time)
+        return response
 
     @app.middleware("http")
     async def jsonl_invocations_handler(request: Request, call_next):
