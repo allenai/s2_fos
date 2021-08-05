@@ -1,9 +1,16 @@
+import logging
+import logging.config
 import os
 import signal
 import subprocess
 import sys
 
 import click
+
+
+dir = os.path.dirname(os.path.realpath(__file__))
+logging.config.fileConfig(os.path.join(dir, "server", "logging.conf"))
+logger = logging.getLogger(__name__)
 
 
 def _sigterm_handler(nginx_pid, gunicorn_pid):
@@ -30,7 +37,9 @@ def serve():
     num_worker_processes = int(os.getenv("NUM_WORKERS", 1))
     batch_size = int(os.getenv("BATCH_SIZE", 1))
 
-    print("Starting the inference server with {} workers.".format(num_worker_processes))
+    logger.info(
+        "Starting the inference server with {} workers.".format(num_worker_processes)
+    )
 
     # link the log streams to stdout/err so they will be logged to the container logs
     subprocess.check_call(["ln", "-sf", "/dev/stdout", "/var/log/nginx/access.log"])
@@ -48,7 +57,9 @@ def serve():
             "unix:/tmp/gunicorn.sock",
             "-w",
             str(num_worker_processes),
-            f"api:initialize_api({batch_size})",
+            "--log-config",
+            "./server/logging.conf",
+            f"server.api:initialize_api({batch_size})",
         ]
     )
 
@@ -64,7 +75,7 @@ def serve():
             break
 
     _sigterm_handler(nginx.pid, gunicorn.pid)
-    print("Inference server exiting")
+    logger.info("Inference server exiting")
 
 
 """

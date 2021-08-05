@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from api import make_app
+from server.api import make_app
 
 
 class FakeInstance(BaseModel):
@@ -45,9 +45,9 @@ TEST_PREDICTIONS = [
 ]
 
 
-@patch("api.Instance", FakeInstance)
-@patch("api.Prediction", FakePrediction)
-@patch("api.get_predictor", get_mock_predictor)
+@patch("server.api.Instance", FakeInstance)
+@patch("server.api.Prediction", FakePrediction)
+@patch("server.api.get_predictor", get_mock_predictor)
 class TestApi(unittest.TestCase):
     def test_invocations_jsonl__rejects_json_paired_with_jsonl(self):
         client = TestClient(make_app())
@@ -154,8 +154,8 @@ class TestApi(unittest.TestCase):
         self.assertEqual(response.content.decode(), expected_response)
 
 
-@patch("api.Instance", FakeInstance)
-@patch("api.Prediction", FakePrediction)
+@patch("server.api.Instance", FakeInstance)
+@patch("server.api.Prediction", FakePrediction)
 class TestBatchSizing(unittest.TestCase):
     def _test_predict_batch_calls(
         self,
@@ -168,7 +168,7 @@ class TestBatchSizing(unittest.TestCase):
         def _get_mock_predictor():
             return mock_predictor
 
-        with patch("api.get_predictor", _get_mock_predictor):
+        with patch("server.api.get_predictor", _get_mock_predictor):
             if batch_size is not None:
                 client = TestClient(make_app(batch_size))
             else:

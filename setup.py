@@ -8,6 +8,7 @@ s2agemaker_requirements = [
     "pydantic",
     "fastapi",
     "click",
+    "python-json-logger",
 ]
 
 # Add your python dependencies
