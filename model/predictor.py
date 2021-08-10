@@ -1,8 +1,14 @@
-import json
-import os
-from typing import List
+import logging
+from typing import List, Optional
 
 from pydantic import BaseModel, BaseSettings, Field
+from sklearn.multioutput import MultiOutputClassifier
+
+from model import utils
+from model.hyperparameters import ModelHyperparameters
+
+
+logger = logging.getLogger(__name__)
 
 from model.instance import Instance
 from model.prediction import Prediction
@@ -27,39 +33,24 @@ class PredictorConfig(BaseSettings):
 
 
 class Predictor:
-    """
-    Used by the included FastAPI server to perform inference. Initialize your model
-    in the constructor using the supplied `PredictorConfig` instance, and perform inference
-    for each `Instance` passed via `predict_batch()`. The default batch size is `1`, but
-    you should handle as many `Instance`s as are provided.
-    """
-
-    _cool_learned_factor: int
     _config: PredictorConfig
+    _hyperparameters: ModelHyperparameters
+    _classifier: MultiOutputClassifier
 
     def __init__(self, config: PredictorConfig):
-        """
-        Initialize your model using the passed parameters
-        """
         self._config = config
-        self._load_learned_parameters()
-
-    def _load_learned_parameters(self):
-        params_path = os.path.join(
-            self._config.artifacts_dir, "example_learned_parameters.json"
-        )
-
-        with open(params_path, "r") as f:
-            as_dict = json.loads(f.read())
-            self._cool_learned_factor = as_dict["cool_learned_factor"]
+        self._hyperparameters = utils.load_hyperparameters(self._config.artifacts_dir)
+        self._classifier = utils.load_classifier(self._config.artifacts_dir)
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
-        predictions = []
+        texts = [
+            utils.make_inference_text(instance, self._hyperparameters.use_abstract)
+            for instance in instances
+        ]
 
-        for instance in instances:
-            better_field2 = instance.field2 * self._cool_learned_factor
-            predictions.append(
-                Prediction(output_field=f"{instance.field1}:{better_field2}")
-            )
+        multihot_preds = self._classifier.predict(texts)
 
-        return predictions
+        return [
+            Prediction(fields_of_study=utils.multihot_to_labels(multihot))
+            for multihot in multihot_preds
+        ]

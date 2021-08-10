@@ -12,15 +12,18 @@ s2agemaker_requirements = [
 ]
 
 # Add your python dependencies
-model_requirements = []
+model_requirements = [
+    "numpy",
+    "sklearn"
+]
 
 dev_requirements = ["pytest", "mypy", "black", "requests", "types-requests"]
 
 setuptools.setup(
-    name="your-model-name-here",
+    name="s2-fos",
     version="0.0.1",
-    description="Describe your model here",
-    url="https://github.com/allenai/s2agemaker/",
+    description="S2's paper Field of Study classifier",
+    url="https://github.com/allenai/s2-fos/",
     packages=setuptools.find_packages(),
     install_requires=s2agemaker_requirements + model_requirements,
     extras_require={"dev": dev_requirements},
