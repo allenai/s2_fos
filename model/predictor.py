@@ -22,7 +22,7 @@ class PredictorConfig(BaseSettings):
 
     artifacts_dir: str = Field(
         description="Directory to find model artifacts such as learned model parameters, etc",
-        default="/opt/ml/artifacts",
+        default="/opt/ml/model",
     )
 
 

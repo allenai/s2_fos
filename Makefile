@@ -11,7 +11,7 @@ serve: build-image
 	docker run \
 		-p 8080:8080 \
 		--env-file $(shell pwd)/docker.env \
-		-v $(shell pwd)/artifacts:/opt/ml/artifacts:ro \
+		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
 		$(IMAGE_NAME) serve
 
 mypy: build-image

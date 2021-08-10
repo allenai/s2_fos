@@ -23,7 +23,7 @@ RUN pip install --upgrade .[dev]
 
 COPY . .
 
-ENV ARTIFACTS_DIR /opt/ml/artifacts
+ENV ARTIFACTS_DIR /opt/ml/model
 ENV BATCH_SIZE 1
 ENV MODEL_SERVER_TIMEOUT 60
 ENV NUM_WORKERS 1
