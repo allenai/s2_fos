@@ -1,8 +1,10 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class Instance(BaseModel):
-    """Represents one object for which inference can be performed."""
+    """Represents one paper for which we can predict fields of study"""
 
-    field1: str = Field(description="Some string field of consequence for inference")
-    field2: float = Field(description="Some float field of consequence for inference")
+    title: str = Field(description="Title text for paper")
+    abstract: Optional[str] = Field(description="Abstract text for paper (optional)")

@@ -39,8 +39,10 @@ class Predictor:
 
     def __init__(self, config: PredictorConfig):
         self._config = config
-        self._hyperparameters = utils.load_hyperparameters(self._config.artifacts_dir)
-        self._classifier = utils.load_classifier(self._config.artifacts_dir)
+        hyperparameters, classifier = utils.load_model(self._config.artifacts_dir)
+
+        self._hyperparameters = hyperparameters
+        self._classifier = classifier
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [

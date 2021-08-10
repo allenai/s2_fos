@@ -39,11 +39,13 @@ def multihot_to_labels(multihot: np.ndarray) -> List[str]:
     return labels
 
 
-def save_model(artifacts_dir: str, hyperparameters: ModelHyperparameters, classifier: Pipeline) -> None:
+def save_model(
+    artifacts_dir: str, hyperparameters: ModelHyperparameters, classifier: Pipeline
+) -> None:
     """
     Saves out model hyperparameters and trained classifier to a target directory.
     """
-    with open(os.path.joins(artifacts_dir, HYPERPARAMETERS_FNAME), "w") as fhyper:
+    with open(os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME), "w") as fhyper:
         fhyper.write(hyperparameters.json())
 
     with open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "wb") as fclassifier:
@@ -54,9 +56,9 @@ def load_model(artifacts_dir) -> Tuple[ModelHyperparameters, Pipeline]:
     """
     Loads in previously saved hyperparameters and trained classifier from a target directory.
     """
-    hyperparameters = ModelHyperparameters.parse_file(os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME))
+    hyperparameters = ModelHyperparameters.parse_file(
+        os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME)
+    )
     classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
 
     return hyperparameters, classifier
-
-

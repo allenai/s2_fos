@@ -22,7 +22,9 @@ class Example(BaseModel):
     labels: Prediction
 
 
-def build_and_train_model(training_examples: List[Example], hyperparameters: ModelHyperparameters) -> Pipeline:
+def build_and_train_model(
+    training_examples: List[Example], hyperparameters: ModelHyperparameters
+) -> Pipeline:
     """
     From a set of training examples, fits an ngram TFIDF vectorizer and a multilabel SVM leveraging its output
     """
@@ -30,23 +32,35 @@ def build_and_train_model(training_examples: List[Example], hyperparameters: Mod
     vectorizer = TfidfVectorizer(
         strip_accents="ascii",
         analyzer="char",
-        ngram_range=(hyperparameters.ngram_lower_bound, hyperparameters.ngram_upper_bound),
-        max_features=hyperparameters.max_features
+        ngram_range=(
+            hyperparameters.ngram_lower_bound,
+            hyperparameters.ngram_upper_bound,
+        ),
+        max_features=hyperparameters.max_tfidf_features,
     )
-    svm = LinearSVC(loss="squared_hing", C=hyperparameters.C, random_state=RANDOM_SEED)
+    svm = LinearSVC(loss="squared_hinge", C=hyperparameters.C, random_state=RANDOM_SEED)
     clf = MultiOutputClassifier(svm)
 
     if hyperparameters.scale_features:
-        steps = [("tfidf", vectorizer), ("scaler", MaxAbsScaler(copy=False)), ("classifier", clf)]
+        steps = [
+            ("tfidf", vectorizer),
+            ("scaler", MaxAbsScaler(copy=False)),
+            ("classifier", clf),
+        ]
     else:
         steps = [("tfidf", vectorizer), ("classifier", clf)]
 
     final_model = Pipeline(steps=steps)
 
-    training_texts = [make_inference_text(ex.instance, hyperparameters.use_abstract) for ex in training_examples]
-    labels = np.array([labels_to_multihot(ex.labels) for ex in training_examples], dtype=np.int)
+    training_texts = [
+        make_inference_text(ex.instance, hyperparameters.use_abstract)
+        for ex in training_examples
+    ]
+    labels = np.array(
+        [labels_to_multihot(ex.labels.fields_of_study) for ex in training_examples],
+        dtype=np.uint,
+    )
 
     final_model.fit(training_texts, labels)
 
     return final_model
-

@@ -20,5 +20,5 @@ LABELS = [
     "Physics",
     "Political science",
     "Psychology",
-    "Sociology"
+    "Sociology",
 ]
