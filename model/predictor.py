@@ -4,36 +4,40 @@ from typing import List
 
 from pydantic import BaseModel, BaseSettings, Field
 
+from model.instance import Instance
+from model.prediction import Prediction
 
-class ModelConfig(BaseSettings):
+
+class PredictorConfig(BaseSettings):
     """
-    The set of configuration parameters required to instantiate a model
-    and initialize it for inference over the lifetime of the process.
+    The set of configuration parameters required to instantiate a predictor and
+    initialize it for inference. This is an appropriate place to specify any parameter
+    or configuration values your model requires that aren't packaged with your
+    versioned model artifacts. These should be rare beyond the included
+    `artifacts_dir`.
+
+    Values for these config fields can be provided as environment variables, see:
+    `./docker.env`
     """
 
     artifacts_dir: str = Field(
-        description="Directory to find model artifacts such as learned parameters, etc",
+        description="Directory to find model artifacts such as learned model parameters, etc",
+        default="/opt/ml/artifacts",
     )
 
 
-class Instance(BaseModel):
-    """Represents one object for which inference can be performed."""
-
-    field1: str = Field(description="Some string field of consequence for inference")
-    field2: float = Field(description="Some float field of consequence for inference")
-
-
-class Prediction(BaseModel):
-    """Represents the result of inference over one instance"""
-
-    output_field: str = Field(description="Some predicted piece of data")
-
-
 class Predictor:
-    _cool_learned_factor: int
-    _config: ModelConfig
+    """
+    Used by the included FastAPI server to perform inference. Initialize your model
+    in the constructor using the supplied `PredictorConfig` instance, and perform inference
+    for each `Instance` passed via `predict_batch()`. The default batch size is `1`, but
+    you should handle as many `Instance`s as are provided.
+    """
 
-    def __init__(self, config: ModelConfig):
+    _cool_learned_factor: int
+    _config: PredictorConfig
+
+    def __init__(self, config: PredictorConfig):
         """
         Initialize your model using the passed parameters
         """

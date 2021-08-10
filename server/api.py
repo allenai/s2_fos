@@ -6,7 +6,9 @@ from fastapi import Depends, HTTPException, FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from model.predictor import Instance, ModelConfig, Prediction, Predictor
+from model.instance import Instance
+from model.prediction import Prediction
+from model.predictor import Predictor, PredictorConfig
 
 
 _predictor: Optional[Predictor] = None
@@ -16,7 +18,7 @@ def get_predictor() -> Predictor:
     global _predictor
 
     if not _predictor:
-        config = ModelConfig()
+        config = PredictorConfig()
         _predictor = Predictor(config=config)
 
     return _predictor

@@ -33,13 +33,26 @@ Clone this project and pick a starting branch for your model. Options include:
 
 Each of these branches provides an appropriate Dockerfile to house your model.
 
-Your main job is to re-implement the stubs in `model/predictor.py`.
+Your main job is to re-implement the stubs in `model`:
 
-#### `ModelConfig`
+#### `model.instance.Instance`
+Defines the shape for one object over which inference can be performed.
+
+#### `model.prediction.Prediction`
+Defines the shape of the result of inference over one instance.
+
+#### `model.predictor.Predictor`
+Used by the included FastAPI server to perform inference. Initialize your model
+in the constructor using the supplied `PredictorConfig` instance, and perform inference
+for each `Instance` passed via `predict_batch()`. The default batch size is `1`, but
+you should handle as many `Instance`s as are provided.
+
+#### `model.predictor.PredictorConfig`
 The set of configuration parameters required to instantiate a predictor and
 initialize it for inference. This is an appropriate place to specify any parameter 
 or configuration values your model requires that aren't packaged with your
-versioned model artifacts.
+versioned model artifacts. These should be rare beyond the included
+`artifacts_dir`.
 
 Values for these config fields can be provided as environment variables, see:
 `./docker.env`
@@ -47,18 +60,6 @@ Values for these config fields can be provided as environment variables, see:
 Will read in ENV vars, see pydantic's 
 [setting's management docs](https://pydantic-docs.helpmanual.io/usage/settings/)
 for more details.
-
-#### `Instance`
-Defines the shape for one object over which inference can be performed.
-
-#### `Prediction`
-Defines the shape of the result of inference over one instance.
-
-#### `Predictor`
-Used by the included FastAPI server to perform inference. Initialize your model
-in the constructor using the supplied `ModelConfig` instance, and perform inference
-for each `Instance` passed via `predict_batch()`. The default batch size is `1`, but
-you should handle as many `Instance`s as are provided.
 
 ---
 **Please note**:
