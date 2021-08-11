@@ -13,15 +13,14 @@ class EvalSettings(BaseSettings):
         default="/opt/ml/model",
     )
     input_data_dir: str = Field(
-        description="Directory to find data files",
-        default="/opt/ml/input/_input_data"
+        description="Directory to find data files", default="/opt/ml/input/data"
     )
     channel_name: str = Field(
         description="Name of data channel to run evaluation against. Name of subdirectory under `input_data_dir`",
     )
     model_version: Optional[str] = Field(
         description="Logical name for a model version or experiment, to segment and retrieve artifacts",
-        default=None
+        default=None,
     )
 
     def eval_data_dir(self) -> str:
@@ -39,5 +38,3 @@ class EvalSettings(BaseSettings):
 def generate_metrics(eval_examples: List[Example], prediction: List[Prediction]) -> Any:
     # TODO: what metrics do we need to generate?
     pass
-
-

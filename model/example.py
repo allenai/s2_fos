@@ -7,7 +7,3 @@ from model.prediction import Prediction
 class Example(BaseModel):
     instance: Instance
     labels: Prediction
-
-
-
-

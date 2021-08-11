@@ -33,11 +33,11 @@ class PredictorConfig(BaseSettings):
     )
     model_version: Optional[str] = Field(
         description="Logical name for a model version or experiment, to segment and retrieve artifacts",
-        default=None
+        default=None,
     )
 
     def model_artifacts_dir(self) -> str:
-        if not self.model_version:
+        if self.model_version is None or self.model_version == "":
             return self.artifacts_dir
 
         return os.path.join(self.artifacts_dir, self.model_version)
@@ -48,7 +48,9 @@ class Predictor:
     _classifier: MultiOutputClassifier
 
     def __init__(self, config: PredictorConfig):
-        self._hyperparameters, self._classifier = utils.load_model(config.model_artifacts_dir())
+        self._hyperparameters, self._classifier = utils.load_model(
+            config.model_artifacts_dir()
+        )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [

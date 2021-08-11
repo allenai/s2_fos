@@ -37,8 +37,8 @@ CMD ["serve"]
 RUN mkdir -p /opt/ml/input
 RUN mkdir -p /opt/ml/output
 
-ENV INPUT_DATA_DIR /opt/ml/input/_input_data
-ENV INPUT_CONFIG_DIR /opt/ml/input/input_config
+ENV INPUT_DATA_DIR /opt/ml/input/data
+ENV INPUT_CONFIG_DIR /opt/ml/input/config
 ENV OUTPUT_DATA_DIR /opt/ml/output
 
 ENV CHANNEL_NAME $CHANNEL_NAME

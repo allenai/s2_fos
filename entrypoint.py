@@ -91,11 +91,13 @@ def train():
     hyperparameters = training_config.load_hyperparameters()
     training_examples = load_labeled_data(training_config.training_data_dir())
 
-    logger.info(f"""
+    logger.info(
+        f"""
         TRAINING WITH
         data channel: {training_config.channel_name}
         hyperparameters: {hyperparameters.json()}
-    """)
+    """
+    )
 
     logger.info(f"TRAINING WITH HYPERPARAMS={hyperparameters.json()}")
     trained_model = build_and_train_model(training_examples, hyperparameters)
@@ -116,11 +118,13 @@ def evaluate():
     predictor_config = PredictorConfig()
     predictor = Predictor(predictor_config)
 
-    logger.info(f"""
+    logger.info(
+        f"""
         RUNNING EVAL FOR
         model version: {eval_settings.model_version}
         dataset: {eval_settings.channel_name}
-    """)
+    """
+    )
 
     predictions = predictor.predict_batch([ex.instance for ex in eval_examples])
     generate_metrics(eval_examples, predictions)

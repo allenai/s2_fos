@@ -32,36 +32,35 @@ class TrainingConfig(BaseSettings):
         default="/opt/ml/model",
     )
     input_data_dir: str = Field(
-        description="Directory to find data files",
-        default="/opt/ml/input/_input_data"
+        description="Directory to find data files", default="/opt/ml/input/data"
     )
     channel_name: str = Field(
         description="Name of data channel to use for training. Name of subdirectory under `input_data_dir`",
-        default="training"
+        default="training",
     )
     input_config_dir: str = Field(
         description="Directory to find configuration files like hyperparameters",
-        default="/opt/ml/input/input_config"
+        default="/opt/ml/input/config",
     )
     hyperparameters_file: str = Field(
         description="Filename of hyperparameters json file, following specification in `model.hyperparameters`"
     )
     model_version: Optional[str] = Field(
         description="Logical name for a model version or experiment, to segment and retrieve artifacts",
-        default=None
+        default=None,
     )
 
     def training_data_dir(self) -> str:
         return os.path.join(self.input_data_dir, self.channel_name)
 
     def target_artifacts_dir(self) -> str:
-        if self.model_version is None:
+        if self.model_version is None or self.model_version == "":
             return self.artifacts_dir
 
         return os.path.join(self.artifacts_dir, self.model_version)
 
     def load_hyperparameters(self) -> ModelHyperparameters:
-        filepath = os.path.join(self.hyperparameters_file, self.hyperparameters_file)
+        filepath = os.path.join(self.input_config_dir, self.hyperparameters_file)
         return ModelHyperparameters.parse_file(filepath)
 
 

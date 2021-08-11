@@ -43,18 +43,23 @@ def multihot_to_labels(multihot: np.ndarray) -> List[str]:
     return labels
 
 
-def load_labeled_data(training_data_dir: str) -> List[Example]:
+def load_labeled_data(labeled_data_dir: str) -> List[Example]:
+    """
+    Given a directory of labeled data JSONL files, loads
+    a list of examples.
+    """
+
     examples: List[Example] = []
 
     training_files = [
         f
-        for f in os.listdir(training_data_dir)
-        if os.path.isfile(os.path.join(training_data_dir, f)) and f.endswith(".json")
+        for f in os.listdir(labeled_data_dir)
+        if os.path.isfile(os.path.join(labeled_data_dir, f)) and f.endswith(".jsonl")
     ]
 
     for training_file in training_files:
         logger.info("Loading training data from `{f}`")
-        with open(os.path.join(training_data_dir, training_file), "r") as f:
+        with open(os.path.join(labeled_data_dir, training_file), "r") as f:
             for line in f:
                 example = Example.parse_raw(line)
                 examples.append(example)
@@ -68,8 +73,12 @@ def save_model(
     """
     Saves out model hyperparameters and trained classifier to a target directory.
     """
+
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
     with open(os.path.join(target_dir, HYPERPARAMETERS_FNAME), "w") as fhyper:
-        fhyper.write(hyperparameters.json())
+        fhyper.write(hyperparameters.json(indent=4))
 
     with open(os.path.join(target_dir, CLASSIFIER_FNAME), "wb") as fclassifier:
         pickle.dump(classifier, fclassifier)
