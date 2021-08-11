@@ -58,7 +58,7 @@ CHANNEL_NAME=<EVALUATION_DATASET_NAME> \
 This will produce predictions using the model artifacts at `artifacts/<SOME_MODEL_IDENTIFIER>`
 against the labeled dataset in `input/data/<EVALUATION_DATASET_NAME>`.
 
-Evaluation results will be stored to <TODO>.
+Evaluation results will be stored to `output/<SOME_MODEL_IDENTIFIER>/<EVALUATION_DATASET_NAME>/metrics.json`.
 
 Please note: if no `MODEL_VERSION` is provided, artifacts will be loaded directly from
 `artifacts/`.
