@@ -1,14 +1,18 @@
+import logging
 import os
 import pickle
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from sklearn.pipeline import Pipeline
 
+from model.example import Example
 from model.hyperparameters import ModelHyperparameters
-from model.labels import LABELS
 from model.instance import Instance
+from model.labels import LABELS
 
+
+logger = logging.getLogger(__name__)
 
 HYPERPARAMETERS_FNAME = "hyperparameters.json"
 CLASSIFIER_FNAME = "classifier.pkl"
@@ -39,26 +43,50 @@ def multihot_to_labels(multihot: np.ndarray) -> List[str]:
     return labels
 
 
+def load_labeled_data(training_data_dir: str) -> List[Example]:
+    examples: List[Example] = []
+
+    training_files = [
+        f
+        for f in os.listdir(training_data_dir)
+        if os.path.isfile(os.path.join(training_data_dir, f)) and f.endswith(".json")
+    ]
+
+    for training_file in training_files:
+        logger.info("Loading training data from `{f}`")
+        with open(os.path.join(training_data_dir, training_file), "r") as f:
+            for line in f:
+                example = Example.parse_raw(line)
+                examples.append(example)
+
+    return examples
+
+
 def save_model(
-    artifacts_dir: str, hyperparameters: ModelHyperparameters, classifier: Pipeline
+    target_dir: str, hyperparameters: ModelHyperparameters, classifier: Pipeline
 ) -> None:
     """
     Saves out model hyperparameters and trained classifier to a target directory.
     """
-    with open(os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME), "w") as fhyper:
+    with open(os.path.join(target_dir, HYPERPARAMETERS_FNAME), "w") as fhyper:
         fhyper.write(hyperparameters.json())
 
-    with open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "wb") as fclassifier:
+    with open(os.path.join(target_dir, CLASSIFIER_FNAME), "wb") as fclassifier:
         pickle.dump(classifier, fclassifier)
 
 
-def load_model(artifacts_dir) -> Tuple[ModelHyperparameters, Pipeline]:
+def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, Pipeline]:
     """
     Loads in previously saved hyperparameters and trained classifier from a target directory.
     """
+
+    logging.info("Loading hyperparameters from disk...")
+
     hyperparameters = ModelHyperparameters.parse_file(
         os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME)
     )
+
+    logging.info("Loading pickled classifier from disk...")
     classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
 
     return hyperparameters, classifier

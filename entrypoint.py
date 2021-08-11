@@ -7,6 +7,11 @@ import sys
 
 import click
 
+from model.eval import EvalSettings, generate_metrics
+from model.predictor import Predictor, PredictorConfig
+from model.training import build_and_train_model, TrainingConfig
+from model.utils import load_labeled_data, save_model
+
 
 dir = os.path.dirname(os.path.realpath(__file__))
 logging.config.fileConfig(os.path.join(dir, "server", "logging.conf"))
@@ -78,15 +83,49 @@ def serve():
     logger.info("Inference server exiting")
 
 
-"""
-Implement other CLI commands as desired using `click`.
-
-```
 @cli.command()
 def train():
-    raise NotImplementedError()
-```
-"""
+    logger.info("BEGINNING TRAINING ROUTINE")
+
+    training_config = TrainingConfig()
+    hyperparameters = training_config.load_hyperparameters()
+    training_examples = load_labeled_data(training_config.training_data_dir())
+
+    logger.info(f"""
+        TRAINING WITH
+        data channel: {training_config.channel_name}
+        hyperparameters: {hyperparameters.json()}
+    """)
+
+    logger.info(f"TRAINING WITH HYPERPARAMS={hyperparameters.json()}")
+    trained_model = build_and_train_model(training_examples, hyperparameters)
+
+    logger.info("MODEL TRAINING COMPLETE, SAVING TO DISK")
+    logger.info(f"MODEL VERSION: {training_config.model_version}")
+    save_model(training_config.target_artifacts_dir(), hyperparameters, trained_model)
+    logger.info("MODEL SAVED, EXITING")
+
+
+@cli.command()
+def evaluate():
+    logger.info("BEGINNING EVAL ROUTINE")
+
+    eval_settings = EvalSettings()
+    eval_examples = load_labeled_data(eval_settings.eval_data_dir())
+
+    predictor_config = PredictorConfig()
+    predictor = Predictor(predictor_config)
+
+    logger.info(f"""
+        RUNNING EVAL FOR
+        model version: {eval_settings.model_version}
+        dataset: {eval_settings.channel_name}
+    """)
+
+    predictions = predictor.predict_batch([ex.instance for ex in eval_examples])
+    generate_metrics(eval_examples, predictions)
+
+    # Save metric output
 
 
 if __name__ == "__main__":

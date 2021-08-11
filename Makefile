@@ -14,6 +14,21 @@ serve: build-image
 		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
 		$(IMAGE_NAME) serve
 
+train: build-image
+	docker run \
+		--env-file $(shell pwd)/docker.env \
+		-v $(shell pwd)/artifacts:/opt/ml/model:rw \
+		-v $(shell pwd)/input:/opt/ml/input:ro \
+		$(IMAGE_NAME) train
+
+eval: build-image
+	docker run \
+		--env-file $(shell pwd)/docker.env \
+		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
+		-v $(shell pwd)/input:/opt/ml/input:ro \
+		-v $(shell pwd)/output:/opt/ml/output:rw \
+		$(IMAGE_NAME) evalulate
+
 mypy: build-image
 	docker run --rm --entrypoint /bin/bash $(IMAGE_NAME) -c 'mypy .'
 

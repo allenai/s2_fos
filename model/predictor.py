@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List, Optional
 
 from pydantic import BaseModel, BaseSettings, Field
@@ -30,19 +31,24 @@ class PredictorConfig(BaseSettings):
         description="Directory to find model artifacts such as learned model parameters, etc",
         default="/opt/ml/model",
     )
+    model_version: Optional[str] = Field(
+        description="Logical name for a model version or experiment, to segment and retrieve artifacts",
+        default=None
+    )
+
+    def model_artifacts_dir(self) -> str:
+        if not self.model_version:
+            return self.artifacts_dir
+
+        return os.path.join(self.artifacts_dir, self.model_version)
 
 
 class Predictor:
-    _config: PredictorConfig
     _hyperparameters: ModelHyperparameters
     _classifier: MultiOutputClassifier
 
     def __init__(self, config: PredictorConfig):
-        self._config = config
-        hyperparameters, classifier = utils.load_model(self._config.artifacts_dir)
-
-        self._hyperparameters = hyperparameters
-        self._classifier = classifier
+        self._hyperparameters, self._classifier = utils.load_model(config.model_artifacts_dir())
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [
@@ -53,6 +59,6 @@ class Predictor:
         multihot_preds = self._classifier.predict(texts)
 
         return [
-            Prediction(fields_of_study=utils.multihot_to_labels(multihot))
+            Prediction(foses=utils.multihot_to_labels(multihot))
             for multihot in multihot_preds
         ]
