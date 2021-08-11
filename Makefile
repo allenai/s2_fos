@@ -2,7 +2,7 @@ ifdef TAG
 	OPTIONAL_TAG = -$(TAG)
 endif
 
-IMAGE_NAME=s2agemaker-template$(OPTIONAL_TAG)
+IMAGE_NAME=s2-fos$(OPTIONAL_TAG)
 
 build-image:
 	docker build -t $(IMAGE_NAME) .
@@ -27,7 +27,7 @@ eval: build-image
 		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
 		-v $(shell pwd)/input:/opt/ml/input:ro \
 		-v $(shell pwd)/output:/opt/ml/output:rw \
-		$(IMAGE_NAME) evalulate
+		$(IMAGE_NAME) evaluate
 
 mypy: build-image
 	docker run --rm --entrypoint /bin/bash $(IMAGE_NAME) -c 'mypy .'

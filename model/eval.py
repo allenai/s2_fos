@@ -1,5 +1,5 @@
 import os
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseSettings, Field
 
@@ -18,6 +18,9 @@ class EvalSettings(BaseSettings):
     channel_name: str = Field(
         description="Name of data channel to run evaluation against. Name of subdirectory under `input_data_dir`",
     )
+    output_data_dir: str = Field(
+        description="Directory to write metrics results into", default="/opt/ml/output"
+    )
     model_version: Optional[str] = Field(
         description="Logical name for a model version or experiment, to segment and retrieve artifacts",
         default=None,
@@ -29,12 +32,23 @@ class EvalSettings(BaseSettings):
     def target_artifacts_dir(self) -> str:
         """Specifies full directory path for location of model artifacts"""
 
-        if self.model_version is None:
+        if self.model_version is None or self.model_version == "":
             return self.artifacts_dir
 
         return os.path.join(self.artifacts_dir, self.model_version)
 
+    def metrics_output_dir(self) -> str:
+        """Specifies full directory path for saving out evaluation metrics"""
 
-def generate_metrics(eval_examples: List[Example], prediction: List[Prediction]) -> Any:
+        if self.model_version is None or self.model_version == "":
+            return os.path.join(self.artifacts_dir, self.channel_name)
+
+        return os.path.join(self.output_data_dir, self.model_version, self.channel_name)
+
+
+def generate_metrics(
+    eval_examples: List[Example], prediction: List[Prediction]
+) -> Dict[str, Any]:
     # TODO: what metrics do we need to generate?
-    pass
+
+    return {"asdf": "fdsa"}

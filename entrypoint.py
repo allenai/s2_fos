@@ -1,3 +1,4 @@
+import json
 import logging
 import logging.config
 import os
@@ -127,9 +128,22 @@ def evaluate():
     )
 
     predictions = predictor.predict_batch([ex.instance for ex in eval_examples])
-    generate_metrics(eval_examples, predictions)
+    metrics = generate_metrics(eval_examples, predictions)
 
-    # Save metric output
+    metrics_dir = eval_settings.metrics_output_dir()
+
+    if not os.path.exists(metrics_dir):
+        os.makedirs(metrics_dir)
+
+    logging.info(
+        f"""
+        METRICS:
+        {metrics}
+        """
+    )
+
+    with open(os.path.join(metrics_dir, "metrics.json"), "w") as f:
+        f.write(json.dumps(metrics, indent=4))
 
 
 if __name__ == "__main__":
