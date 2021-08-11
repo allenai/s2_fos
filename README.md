@@ -5,6 +5,12 @@ Model code for Semantic Scholar's paper Field of Study classifier.
 Uses a multi-label SVM classifier over paper title and abstract text,
 embedded as character-level ngrams.
 
+## Setup
+
+This project requires `docker` and `make`. 
+
+All commands are run within docker containers.
+
 ## Training
 
 To use this project's training routine, you must provide a set of labeled
@@ -63,7 +69,7 @@ Evaluation results will be stored to `output/<SOME_MODEL_IDENTIFIER>/<EVALUATION
 Please note: if no `MODEL_VERSION` is provided, artifacts will be loaded directly from
 `artifacts/`.
 
-## Serving
+## Serving and Predictions
 
 To run a trained model as an HTTP callable, prepare your artifacts and run:
 
@@ -74,3 +80,18 @@ MODEL_VERSION=<SOME_MODEL_IDENTIFIER> make serve
 ```
 
 If no `MODEL_VERSION` is provided, artifacts will be loaded directly from `artifacts/`.
+
+Once running, you can view your API's interactive Swagger documentation at:
+
+http://localhost:8080/docs
+or
+http://localhost:8080/redocs
+
+## CI
+
+Run the CI script with:
+
+````bash
+cd <project_root>
+./verify.sh
+````
