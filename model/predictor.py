@@ -44,6 +44,11 @@ class PredictorConfig(BaseSettings):
 
 
 class Predictor:
+    """
+    Loads in a trained classifier and TFIDF vectorizer.
+    Used to produce batches of classification predictions.
+    """
+
     _hyperparameters: ModelHyperparameters
     _classifier: MultiOutputClassifier
 

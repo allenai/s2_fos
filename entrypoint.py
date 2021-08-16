@@ -99,8 +99,6 @@ def train():
         hyperparameters: {hyperparameters.json()}
     """
     )
-
-    logger.info(f"TRAINING WITH HYPERPARAMS={hyperparameters.json()}")
     trained_model = build_and_train_model(training_examples, hyperparameters)
 
     logger.info("MODEL TRAINING COMPLETE, SAVING TO DISK")
