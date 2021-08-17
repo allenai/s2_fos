@@ -1,186 +1,97 @@
-# S2agemaker Template
-**/stājˈmākər/**
+# s2-fos
 
-A pun on S2 and AWS SageMaker.
+Model code for Semantic Scholar's paper Field of Study classifier.
 
-## What is this repo?
+Uses a multi-label SVM classifier over paper title and abstract text,
+embedded as character-level ngrams.
 
-This repository provides a template project for packaging up a model.
-It implements the AWS SageMaker specification for model inference servers.
+## Setup
 
-Your model will be runnable in a Docker container, and callable over HTTP.
-It will also be suitable for deployment into S2 infrastructure.
+This project requires `docker` and `make`. 
 
-## What is SageMaker and what is its "specification"?
+All commands are run within docker containers.
 
-AWS SageMaker is a service that allows for development and hosting of
-machine learning models in the cloud.
+## Training
 
-It expects models to be packaged in a Docker image following certain conventions.
-Images following these conventions can be trivially deployed to AWS SageMaker
-and take full advantage of its ecosystem. These conventions are also compatible with
-running the image elsewhere, either locally or remotely.
+To use this project's training routine, you must provide a set of labeled
+training data, and a hyperparameters config file.
 
-Note: we do not yet support the SageMaker model training specification.
+### Training data
 
-## Ok, I'm working on a new model -- what do I do?
+Make a new a directory: `input/data/<TRAINING_DATASET_NAME>`. 
 
-Clone this project and pick a starting branch for your model. Options include:
+Format your labeled examples in the shape of `model.example.Example`
+in one or more `JSONL` files under that directory.
 
-* `[main]` -- default, use for any simple python 3.8 CPU based model 
-* `[pytorch]` -- TODO
-* `[allennlp]` -- TODO
+Separately, create a hyperparameters JSON config file: `input/config/<YOUR_HYPERPARAMS>`.
+Follow the format in `model.hyperparameters.ModelHyperparameters`.
 
-Each of these branches provides an appropriate Dockerfile to house your model.
-
-Your main job is to re-implement the stubs in `model`:
-
-#### `model.instance.Instance`
-Defines the shape for one object over which inference can be performed.
-
-#### `model.prediction.Prediction`
-Defines the shape of the result of inference over one instance.
-
-#### `model.predictor.Predictor`
-Used by the included FastAPI server to perform inference. Initialize your model
-in the constructor using the supplied `PredictorConfig` instance, and perform inference
-for each `Instance` passed via `predict_batch()`. The default batch size is `1`, but
-you should handle as many `Instance`s as are provided.
-
-#### `model.predictor.PredictorConfig`
-The set of configuration parameters required to instantiate a predictor and
-initialize it for inference. This is an appropriate place to specify any parameter 
-or configuration values your model requires that aren't packaged with your
-versioned model artifacts. These should be rare beyond the included
-`artifacts_dir`.
-
-Values for these config fields can be provided as environment variables, see:
-`./docker.env`
-
-Will read in ENV vars, see pydantic's 
-[setting's management docs](https://pydantic-docs.helpmanual.io/usage/settings/)
-for more details.
-
----
-**Please note**:
-
-`ModelConfig`, `Instance`, and `Prediction` should all be implemented as
-[pydantic models](https://pydantic-docs.helpmanual.io/usage/models/).
-
-Pydantic allows:
- * static definition of field types
- * imposition of value constraints
- * sophisticated multi-field validation rules
- * marshalling to/from JSON
- 
-It is also used by FastAPI to generate API documentation for the included server.
- 
----
- 
-## Run Your Model Locally
- 
- 1. Make sure any artifacts required by your model are in `./artifacts`.
- 2. `cd <projectRoot>`
- 3. `make serve`
- 
-This will build your model image and start a server at `localhost:8080`.
- 
- 
-## Invoking Your Model
- 
-This project implements a single endpoint, `/invocations`, which accepts
-`application/json` POST requests.
- 
-The general format for the JSON body is to provide one or more instances for inference, e.g.:
- 
-```json
-{
-    "instances": [ {}, {}, {}, {} ]
-}
-```
-
-with a response format of:
-
-```json
-{
-    "predictions": [ {}, {}, {}, {} ]
-}
-```
-
-For the example project, try:
+Finally, to invoke training:
 
 ```bash
-curl --header "Content-Type: application/json" \
-    --request POST \
-    --data '{"instances": [{"field1": "asdf", "field2": 1.2}]}' \
-    http://localhost:8080/invocations
+cd <project_root>
+
+CHANNEL_NAME=<TRAINING_DATASET_NAME> \
+  HYPERPARAMETERS_FILE=<YOUR_HYPERPARAMS> \
+  MODEL_VERSION=<SOME_VERSION_IDENTIFIER> \
+  make train
 ```
 
-to yield:
+This will train your model and output artifacts at: `artifacts/<SOME_VERSION_IDENTIFIER>`.
+It will also save the hyperparameters used at training for later reference.
 
+Please note: if no arguments are provided, training data will be loaded from:
+`input/data/training`, hyperparams from `input/config/hyperparameters.json` and
+artifacts will be saved directly to `artifacts/`.
+
+## Evaluation
+
+You can run a trained model against an evaluation or test dataset in a similar vein.
+
+Make a new directory: `input/data/<EVALUATION_DATASET_NAME>`. Add labeled example files
+as with training.
+
+Invoke evaluation with:
+
+```bash
+cd <project_root>
+
+CHANNEL_NAME=<EVALUATION_DATASET_NAME> \
+  MODEL_VERSION=<SOME_MODEL_IDENTIFIER> \
+  make evaluate
 ```
-{"predictions":[{"output_field":"asdf:2.4"}]}
+
+This will produce predictions using the model artifacts at `artifacts/<SOME_MODEL_IDENTIFIER>`
+against the labeled dataset in `input/data/<EVALUATION_DATASET_NAME>`.
+
+Evaluation results will be stored to `output/<SOME_MODEL_IDENTIFIER>/<EVALUATION_DATASET_NAME>/metrics.json`.
+
+Please note: if no `MODEL_VERSION` is provided, artifacts will be loaded directly from
+`artifacts/`.
+
+## Serving and Predictions
+
+To run a trained model as an HTTP callable, prepare your artifacts and run:
+
+```bash
+cd <project_root>
+
+MODEL_VERSION=<SOME_MODEL_IDENTIFIER> make serve
 ```
 
-## API Documentation
+If no `MODEL_VERSION` is provided, artifacts will be loaded directly from `artifacts/`.
 
-Thanks to `pydantic` and `FastAPI`, you can also view automatically-generated
-documentation for your API.
-
-See:
-
-http://locahost:8080/redoc
-
-and
+Once running, you can view your API's interactive Swagger documentation at:
 
 http://localhost:8080/docs
+or
+http://localhost:8080/redocs
 
-for two different views.
+## CI
 
-## Tests and CI
+Run the CI script with:
 
-This template project provides a CI script to verify the formatting, type safety, and
-behavior of your application.
-
-To run:
-
-```bash
-cd <projectRoot>
+````bash
+cd <project_root>
 ./verify.sh
-```
-
-This will build your image, run `mypy`, `pytest` unit tests, and `black` formatting.
-
-These can be run individually via:
-
-`make mypy`
-
-`make unit`
-
-and
-
-`make format`
-
-Add your project's unit tests under `./tests` to include them in the suite.
-
-### Integration Tests
-
-[TODO] single driver script, mechanism for supplying different artifacts
-
-A live server running your model can be run for executing integration tests.
-
-In on terminal:
-```
-make serve
-```
-
-And in another:
-```
-make it
-```
-
-### Loading and Publishing Model Artifacts
-
-[TODO]
-
-
+````

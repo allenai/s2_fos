@@ -33,3 +33,15 @@ ENV PYTHONUNBUFFERED 1
 ENTRYPOINT ["python3", "entrypoint.py"]
 CMD ["serve"]
 
+# For training and eval routines
+RUN mkdir -p /opt/ml/input
+RUN mkdir -p /opt/ml/output
+
+ENV INPUT_DATA_DIR /opt/ml/input/data
+ENV INPUT_CONFIG_DIR /opt/ml/input/config
+ENV OUTPUT_DATA_DIR /opt/ml/output
+
+ENV CHANNEL_NAME $CHANNEL_NAME
+ENV MODEL_VERSION $MODEL_VERSION
+ENV HYPERPARAMETERS_FILE $HYPERPARAMETERS_FILE
+

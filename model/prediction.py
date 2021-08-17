@@ -1,7 +1,9 @@
+from typing import List
+
 from pydantic import BaseModel, Field
 
 
 class Prediction(BaseModel):
-    """Represents the result of inference over one instance"""
+    """Represents predicted fields of study for a given paper"""
 
-    output_field: str = Field(description="Some predicted piece of data")
+    foses: List[str] = Field(description="Predicted fields of study")
