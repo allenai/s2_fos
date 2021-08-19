@@ -1,4 +1,5 @@
 import enum
+import json
 import time
 from typing import Iterable, List, Optional
 
@@ -9,6 +10,13 @@ from pydantic import BaseModel, Field
 from model.instance import Instance
 from model.prediction import Prediction
 from model.predictor import Predictor, PredictorConfig
+
+
+# For compatibility with AWS SageMaker,
+# which prevents inclusion of adhoc response headers, see:
+# https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_runtime_InvokeEndpoint.html#API_runtime_InvokeEndpoint_ResponseSyntax.
+# Limit: 1024 US-ASCII characters.
+CUSTOM_ATTRIBUTES_HEADER_NAME = "X-Amzn-SageMaker-Custom-Attributes"
 
 
 _predictor: Optional[Predictor] = None
@@ -52,7 +60,12 @@ def make_app(batch_size: int = 1):
         """Records total time (seconds) processing a request"""
         start_time = time.monotonic()
         response = await call_next(request)
-        response.headers["X-Processing-Time"] = str(time.monotonic() - start_time)
+        processing_time = time.monotonic() - start_time
+
+        response.headers[CUSTOM_ATTRIBUTES_HEADER_NAME] = json.dumps(
+            {"processing_time": processing_time}
+        )
+
         return response
 
     @app.middleware("http")
