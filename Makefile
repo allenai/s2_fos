@@ -1,8 +1,10 @@
+PROJECT_NAME=$(shell cat PROJECT_NAME.txt)
+
 ifdef TAG
 	OPTIONAL_TAG = -$(TAG)
 endif
 
-IMAGE_NAME=s2agemaker-template$(OPTIONAL_TAG)
+IMAGE_NAME=$(PROJECT_NAME)$(OPTIONAL_TAG)
 
 build-image:
 	docker build -t $(IMAGE_NAME) .

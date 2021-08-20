@@ -33,6 +33,12 @@ Clone this project and pick a starting branch for your model. Options include:
 
 Each of these branches provides an appropriate Dockerfile to house your model.
 
+### Give your project a name
+
+Open up `PROJECT_NAME.txt` and replace with your model's name.
+
+### Implement Your Model's Interface
+
 Your main job is to re-implement the stubs in `model`:
 
 #### `model.instance.Instance`

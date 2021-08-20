@@ -14,6 +14,7 @@ FROM python:3.8
 RUN apt-get update && apt-get install nginx -y
 WORKDIR /opt/ml/code
 
+COPY PROJECT_NAME.txt .
 COPY requirements.txt .
 COPY setup.py .
 
