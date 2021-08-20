@@ -12,9 +12,9 @@ FROM python:3.8
 ###########################################################
 
 RUN apt-get update && apt-get install nginx -y
-RUN mkdir -p /opt/ml/code
 WORKDIR /opt/ml/code
 
+COPY PROJECT_NAME.txt .
 COPY requirements.txt .
 COPY setup.py .
 
@@ -27,7 +27,6 @@ ENV ARTIFACTS_DIR /opt/ml/model
 ENV BATCH_SIZE 1
 ENV MODEL_SERVER_TIMEOUT 60
 ENV NUM_WORKERS 1
-ENV PATH $PATH:/opt/ml/code
 ENV PYTHONUNBUFFERED 1
 
 ENTRYPOINT ["python3", "entrypoint.py"]
