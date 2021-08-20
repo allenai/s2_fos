@@ -24,5 +24,5 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=s2agemaker_requirements + model_requirements,
     extras_require={"dev": dev_requirements},
-    python_requires=">3.7,<3.9",
+    python_requires="~= 3.8",
 )
