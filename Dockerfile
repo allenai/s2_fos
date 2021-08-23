@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.8-slim-buster
 
 ###########################################################
 ###### MODEL SPECIFIC SYSTEM DEPS AND SETUP GO HERE #######
@@ -11,7 +11,7 @@ FROM python:3.8
 #### S2AGEMAKER REQS BELOW THIS POINT -- DO NOT CHANGE ####
 ###########################################################
 
-RUN apt-get update && apt-get install nginx -y
+RUN apt-get update && apt-get install nginx iproute2 -y
 WORKDIR /opt/ml/code
 
 COPY PROJECT_NAME.txt .
