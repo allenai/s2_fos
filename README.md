@@ -133,15 +133,8 @@ to yield:
 Thanks to `pydantic` and `FastAPI`, you can also view automatically-generated
 documentation for your API.
 
-See:
-
-http://locahost:8080/redoc
-
-and
-
+See: 
 http://localhost:8080/docs
-
-for two different views.
 
 ## Tests and CI
 
