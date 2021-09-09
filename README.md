@@ -182,4 +182,10 @@ make it
 
 [TODO]
 
+## Deploying Endpoint to Sagemaker
 
+Use [timo-tools](https://github.com/allenai/timo-tools) to deploy your HTTP endpoint to Sagemaker.
+
+### Accessing Sagemaker Endpoint from Skiff App 
+
+See https://github.com/allenai/timo-tools#accessing-sagemaker-endpoint-from-skiff-app.
