@@ -16,7 +16,7 @@ s2agemaker_requirements = [
 ]
 
 # Add your python dependencies
-model_requirements = ["numpy", "sklearn"]
+model_requirements = ["numpy", "sklearn", "sklearn-contrib-lightning"]
 
 dev_requirements = ["pytest", "mypy", "black", "requests", "types-requests"]
 

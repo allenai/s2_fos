@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import sys
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -10,12 +11,13 @@ from model.example import Example
 from model.hyperparameters import ModelHyperparameters
 from model.instance import Instance
 from model.labels import LABELS
+from model.multioutput import MultiOutputClassifierWithDecision
 
 
 logger = logging.getLogger(__name__)
 
 HYPERPARAMETERS_FNAME = "hyperparameters.json"
-CLASSIFIER_FNAME = "classifier.pkl"
+CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
 
 
 def make_inference_text(instance: Instance, use_abstract: bool) -> str:
@@ -94,6 +96,8 @@ def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, Pipeline]:
     hyperparameters = ModelHyperparameters.parse_file(
         os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME)
     )
+
+    setattr(sys.modules['__main__'], 'MultiOutputClassifierWithDecision', MultiOutputClassifierWithDecision)
 
     logging.info("Loading pickled classifier from disk...")
     classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
