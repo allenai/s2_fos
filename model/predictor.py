@@ -1,9 +1,11 @@
 import logging
 import os
+import numpy as np
 from typing import List, Optional
 
 from pydantic import BaseModel, BaseSettings, Field
-from sklearn.multioutput import MultiOutputClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from model import utils
 from model.hyperparameters import ModelHyperparameters
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 from model.instance import Instance
 from model.prediction import Prediction
+from model.multioutput import MultiOutputClassifierWithDecision
 
 
 class PredictorConfig(BaseSettings):
@@ -50,12 +53,32 @@ class Predictor:
     """
 
     _hyperparameters: ModelHyperparameters
-    _classifier: MultiOutputClassifier
+    _feature_pipe: Pipeline
+    _mlb: MultiLabelBinarizer
+    _classifier: MultiOutputClassifierWithDecision
 
     def __init__(self, config: PredictorConfig):
         self._hyperparameters, self._classifier = utils.load_model(
             config.model_artifacts_dir()
         )
+        self._feature_pipe, self._mlb = utils.load_feature_pipe(config.model_artifacts_dir())
+
+    # it's a bit complex to get predictions
+    # because sometimes none of the classes are above the decision threshold
+    # in that case, we just take the argmax.
+    # this code is ugly because numpy doesn't want arrays full of tuples.
+    # sorry.
+    def get_concrete_predictions(self, featurized_text):
+        mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
+        y_pred = self._classifier.predict(featurized_text)
+        class_preds = np.array(self._mlb.inverse_transform(y_pred))
+        # but sometimes there aren't any at all, so we will just take the first one
+        no_guesses_flag = y_pred.sum(1) == 0
+        decision_scores = self._classifier.decision_function(featurized_text)
+        new_guesses = [(mlb_inverse_dict[i],) for i in np.argmax(decision_scores[no_guesses_flag], axis=1)]
+        for i, ind in enumerate(np.flatnonzero(no_guesses_flag)):
+            class_preds[ind] = new_guesses[i]
+        return class_preds
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [
@@ -63,9 +86,11 @@ class Predictor:
             for instance in instances
         ]
 
-        multihot_preds = self._classifier.predict(texts)
+        featurized_text = self._feature_pipe.transform(texts)
+        multihot_preds = self.get_concrete_predictions(featurized_text)
+
 
         return [
-            Prediction(foses=utils.multihot_to_labels(multihot))
+            Prediction(foses=multihot)
             for multihot in multihot_preds
         ]
