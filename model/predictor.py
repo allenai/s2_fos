@@ -63,22 +63,26 @@ class Predictor:
         )
         self._feature_pipe, self._mlb = utils.load_feature_pipe(config.model_artifacts_dir())
 
-    # it's a bit complex to get predictions
-    # because sometimes none of the classes are above the decision threshold
-    # in that case, we just take the argmax.
-    # this code is ugly because numpy doesn't want arrays full of tuples.
-    # sorry.
     def get_concrete_predictions(self, featurized_text):
+        # ensure that cached_dict has been built on mlb
+        self._mlb._cached_dict = dict(zip(self._mlb.classes_, range(len(self._mlb.classes_))))
         mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
+
         y_pred = self._classifier.predict(featurized_text)
-        class_preds = np.array(self._mlb.inverse_transform(y_pred))
-        # but sometimes there aren't any at all, so we will just take the first one
-        no_guesses_flag = y_pred.sum(1) == 0
+        no_predictions = y_pred.sum(1) == 0
         decision_scores = self._classifier.decision_function(featurized_text)
-        new_guesses = [(mlb_inverse_dict[i],) for i in np.argmax(decision_scores[no_guesses_flag], axis=1)]
-        for i, ind in enumerate(np.flatnonzero(no_guesses_flag)):
-            class_preds[ind] = new_guesses[i]
-        return class_preds
+
+        if no_predictions:
+            best_guess_at_fos = self.best_guess(mlb_inverse_dict, decision_scores)
+            return np.array([[best_guess_at_fos]])
+        else:
+            return np.array(self._mlb.inverse_transform(y_pred))
+
+
+    def best_guess(self, mlb_inverse_dict, decision_scores):
+        # if no field of study is over decision threshold, take field with highest score
+        max_score_index = np.argmax(decision_scores)
+        return mlb_inverse_dict[max_score_index]
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [
@@ -89,8 +93,7 @@ class Predictor:
         featurized_text = self._feature_pipe.transform(texts)
         multihot_preds = self.get_concrete_predictions(featurized_text)
 
-
         return [
-            Prediction(foses=multihot)
+            Prediction(foses=multihot.tolist())
             for multihot in multihot_preds
         ]
