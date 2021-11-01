@@ -43,15 +43,6 @@ def serve():
     num_worker_processes = int(os.getenv("NUM_WORKERS", 1))
     batch_size = int(os.getenv("BATCH_SIZE", 1))
 
-    # getting model artifacts from S3
-    model_s3_path = os.getenv("MODEL_S3_PATH")
-    if model_s3_path:
-        target_path = os.environ["ARTIFACTS_DIR"]
-        logging.info(f"Getting model artifacts from {model_s3_path} to {target_path}")
-        get_model_artifacts(model_s3_path, target_path)
-    else:
-        logging.info(f"Getting model artifact locally.")
-
     logger.info(
         "Starting the inference server with {} workers.".format(num_worker_processes)
     )
@@ -92,16 +83,6 @@ def serve():
     _sigterm_handler(nginx.pid, gunicorn.pid)
     logger.info("Inference server exiting")
 
-def get_model_artifacts(model_s3_path: str, target_path: str):
-    subprocess.check_call(
-        [
-            "aws",
-            "s3",
-            "sync",
-            model_s3_path,
-            target_path
-        ]
-    )
 
 @cli.command()
 def train():

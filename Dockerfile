@@ -4,7 +4,7 @@ FROM python:3.8-slim-buster
 ###### MODEL SPECIFIC SYSTEM DEPS AND SETUP GO HERE #######
 ###########################################################
 
-ENV MODEL_S3_PATH s3://ai2-s2-research/fos/artifacts/
+# have at it
 
 
 ###########################################################

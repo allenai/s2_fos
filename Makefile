@@ -13,7 +13,7 @@ serve: build-image
 	docker run --rm \
 		-p 8080:8080 \
 		--env-file $(shell pwd)/docker.env \
-		-v $(shell pwd)/artifacts:/opt/ml/model:rw \
+		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
 		$(IMAGE_NAME) serve
 
 train: build-image
