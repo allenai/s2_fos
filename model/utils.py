@@ -1,30 +1,67 @@
 import logging
 import os
 import pickle
+import re
+import sys
+from text_unidecode import unidecode
 from typing import List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from model.example import Example
 from model.hyperparameters import ModelHyperparameters
 from model.instance import Instance
 from model.labels import LABELS
+from model.multioutput import MultiOutputClassifierWithDecision
 
 
 logger = logging.getLogger(__name__)
 
 HYPERPARAMETERS_FNAME = "hyperparameters.json"
-CLASSIFIER_FNAME = "classifier.pkl"
+FEATURIZER_FNAME = "feature_pipe_use_venue__false.pickle"
+CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
+
+ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
 
 
 def make_inference_text(instance: Instance, use_abstract: bool) -> str:
     """Makes the combined text to perform inference over, from an Instance"""
     if use_abstract and instance.abstract:
-        return f"{instance.title} {instance.abstract}"
+        return concat_text(instance)
 
-    return instance.title
+    return normalize_text(instance.title)
 
+def normalize_text(text):
+    """
+    Normalize text.
+    Parameters
+    ----------
+    text: string
+        the text to normalize
+    special_case_apostrophie: bool
+        whether to replace apostrophes with empty strings rather than spaces
+    Returns
+    -------
+    string: the normalized text
+    """
+    if text is None or len(text) == 0:
+        return ""
+
+    norm_text = unidecode(text).lower()
+    norm_text = ACCEPTABLE_CHARS.sub(" ", norm_text)
+    norm_text = re.sub(r"\s+", " ", norm_text).strip()
+
+    return norm_text
+
+def concat_text(instance: Instance, sep="|", sep_num=5):
+
+    title = normalize_text(instance.title)
+    abstract = normalize_text(instance.abstract)
+
+    return f"{title} {sep * sep_num} {abstract}"
 
 def labels_to_multihot(fields_of_study: List[str]) -> List[bool]:
     """Generates a multi-hot vector for Fields of Studies"""
@@ -84,7 +121,7 @@ def save_model(
         pickle.dump(classifier, fclassifier)
 
 
-def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, Pipeline]:
+def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, MultiOutputClassifierWithDecision]:
     """
     Loads in previously saved hyperparameters and trained classifier from a target directory.
     """
@@ -95,7 +132,14 @@ def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, Pipeline]:
         os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME)
     )
 
+    setattr(sys.modules['__main__'], 'MultiOutputClassifierWithDecision', MultiOutputClassifierWithDecision)
+
     logging.info("Loading pickled classifier from disk...")
     classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
 
     return hyperparameters, classifier
+
+def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer]:
+    feature_pipe, mlb = pickle.load(open(os.path.join(artifacts_dir, FEATURIZER_FNAME), "rb"))
+
+    return feature_pipe, mlb
