@@ -1,3 +1,6 @@
+from model.multioutput import MultiOutputClassifierWithDecision
+from model.prediction import Prediction
+from model.instance import Instance
 import logging
 import os
 import numpy as np
@@ -12,10 +15,6 @@ from model.hyperparameters import ModelHyperparameters
 
 
 logger = logging.getLogger(__name__)
-
-from model.instance import Instance
-from model.prediction import Prediction
-from model.multioutput import MultiOutputClassifierWithDecision
 
 
 class PredictorConfig(BaseSettings):
@@ -61,14 +60,24 @@ class Predictor:
         self._hyperparameters, self._classifier = utils.load_model(
             config.model_artifacts_dir()
         )
-        self._feature_pipe, self._mlb = utils.load_feature_pipe(config.model_artifacts_dir())
+        self._feature_pipe, self._mlb = utils.load_feature_pipe(
+            config.model_artifacts_dir())
 
         # ensure that cached_dict has been built on mlb
-        self._mlb._cached_dict = dict(zip(self._mlb.classes_, range(len(self._mlb.classes_))))
-        self.mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
+        self._mlb._cached_dict = dict(
+            zip(self._mlb.classes_, range(len(self._mlb.classes_))))
+        self.mlb_inverse_dict = {v: k for k,
+            v in self._mlb._cached_dict.items()}
 
     # works for single featurized text at a time
-    def get_concrete_predictions(self, featurized_text):
+    def get_concrete_predictions(self, text_tuple):
+        featurized_text, original_text = text_tuple
+
+        # Skip the prediction process if the input text is not in english
+        is_english = utils.detect_language(original_text)[1]
+        if not is_english:
+            return []
+
         y_pred = self._classifier.predict(featurized_text)
         no_predictions = y_pred.sum(1) == 0
 
@@ -92,8 +101,9 @@ class Predictor:
         ]
 
         featurized_text = self._feature_pipe.transform(texts)
+        zipped_featurized_text_touple = tuple(zip(featurized_text, texts))
 
         return [
-            Prediction(foses = self.get_concrete_predictions(text))
-            for text in featurized_text
+            Prediction(foses = self.get_concrete_predictions(text_tuple))
+            for text_tuple in zipped_featurized_text_touple
         ]

@@ -11,7 +11,7 @@ FROM python:3.8-slim-buster
 #### S2AGEMAKER REQS BELOW THIS POINT -- DO NOT CHANGE ####
 ###########################################################
 
-RUN apt-get update && apt-get install nginx iproute2 -y
+RUN apt-get update && apt-get install nginx iproute2 gcc g++ -y
 WORKDIR /opt/ml/code
 
 COPY PROJECT_NAME.txt .
