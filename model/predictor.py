@@ -69,15 +69,16 @@ class Predictor:
         self.mlb_inverse_dict = {v: k for k,
             v in self._mlb._cached_dict.items()}
 
-    # works for single featurized text at a time
-    def get_concrete_predictions(self, text_tuple):
-        featurized_text, original_text = text_tuple
+    # works for single text at a time
+    def get_concrete_predictions(self, original_text):
 
         # Skip the prediction process if the input text is not in english
         is_english = utils.detect_language(original_text)[1]
         if not is_english:
             return []
 
+        # featurize the original text 
+        featurized_text = self._feature_pipe.transform([original_text])[0]
         y_pred = self._classifier.predict(featurized_text)
         no_predictions = y_pred.sum(1) == 0
 
@@ -99,11 +100,8 @@ class Predictor:
             utils.make_inference_text(instance, self._hyperparameters.use_abstract)
             for instance in instances
         ]
-
-        featurized_text = self._feature_pipe.transform(texts)
-        zipped_featurized_text_touple = tuple(zip(featurized_text, texts))
-
+        
         return [
-            Prediction(foses = self.get_concrete_predictions(text_tuple))
-            for text_tuple in zipped_featurized_text_touple
+            Prediction(foses = self.get_concrete_predictions(text))
+            for text in texts
         ]
