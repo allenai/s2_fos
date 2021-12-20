@@ -25,11 +25,14 @@ logger = logging.getLogger(__name__)
 HYPERPARAMETERS_FNAME = "hyperparameters.json"
 FEATURIZER_FNAME = "feature_pipe_use_venue__false.pickle"
 CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
-FASTTEXT_PATH = "lid.176.bin"
+FASTTEXT_FNAME = "lid.176.bin"
 
 ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
 
-FASTTEXT_MODEL = fasttext.load_model(os.path.join(os.environ.get("ARTIFACTS_DIR"), (FASTTEXT_PATH)))
+FASTTEXT_MODEL = fasttext.load_model(
+    os.path.join(str(os.environ.get("ARTIFACTS_DIR")), FASTTEXT_FNAME)
+)
+
 
 def make_inference_text(instance: Instance, use_abstract: bool) -> str:
     """Makes the combined text to perform inference over, from an Instance"""
@@ -37,6 +40,7 @@ def make_inference_text(instance: Instance, use_abstract: bool) -> str:
         return concat_text(instance)
 
     return normalize_text(instance.title)
+
 
 def normalize_text(text):
     """
@@ -60,12 +64,14 @@ def normalize_text(text):
 
     return norm_text
 
+
 def concat_text(instance: Instance, sep="|", sep_num=5):
 
     title = normalize_text(instance.title)
     abstract = normalize_text(instance.abstract)
 
     return f"{title} {sep * sep_num} {abstract}"
+
 
 def labels_to_multihot(fields_of_study: List[str]) -> List[bool]:
     """Generates a multi-hot vector for Fields of Studies"""
@@ -125,7 +131,9 @@ def save_model(
         pickle.dump(classifier, fclassifier)
 
 
-def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, MultiOutputClassifierWithDecision]:
+def load_model(
+    artifacts_dir: str,
+) -> Tuple[ModelHyperparameters, MultiOutputClassifierWithDecision]:
     """
     Loads in previously saved hyperparameters and trained classifier from a target directory.
     """
@@ -136,22 +144,29 @@ def load_model(artifacts_dir: str) -> Tuple[ModelHyperparameters, MultiOutputCla
         os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME)
     )
 
-    setattr(sys.modules['__main__'], 'MultiOutputClassifierWithDecision', MultiOutputClassifierWithDecision)
+    setattr(
+        sys.modules["__main__"],
+        "MultiOutputClassifierWithDecision",
+        MultiOutputClassifierWithDecision,
+    )
 
     logging.info("Loading pickled classifier from disk...")
     classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
 
     return hyperparameters, classifier
 
-def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer]:
-    feature_pipe, mlb = pickle.load(open(os.path.join(artifacts_dir, FEATURIZER_FNAME), "rb"))
 
-    return feature_pipe, mlb 
+def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer]:
+    feature_pipe, mlb = pickle.load(
+        open(os.path.join(artifacts_dir, FEATURIZER_FNAME), "rb")
+    )
+
+    return feature_pipe, mlb
 
 
 def detect_language(text: str):
     """
-    Detect the language used in the input text with trained language classifer.  
+    Detect the language used in the input text with trained language classifer.
     """
     if len(text.split()) <= 1:
         return (False, False, "un")
@@ -196,4 +211,3 @@ def detect_language(text: str):
     is_english = predicted_language == "en"
 
     return is_reliable, is_english, predicted_language
-

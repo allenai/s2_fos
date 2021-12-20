@@ -61,13 +61,14 @@ class Predictor:
             config.model_artifacts_dir()
         )
         self._feature_pipe, self._mlb = utils.load_feature_pipe(
-            config.model_artifacts_dir())
+            config.model_artifacts_dir()
+        )
 
         # ensure that cached_dict has been built on mlb
         self._mlb._cached_dict = dict(
-            zip(self._mlb.classes_, range(len(self._mlb.classes_))))
-        self.mlb_inverse_dict = {v: k for k,
-            v in self._mlb._cached_dict.items()}
+            zip(self._mlb.classes_, range(len(self._mlb.classes_)))
+        )
+        self.mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
 
     # works for single text at a time
     def get_concrete_predictions(self, original_text):
@@ -77,7 +78,7 @@ class Predictor:
         if not is_english:
             return []
 
-        # featurize the original text 
+        # featurize the original text
         featurized_text = self._feature_pipe.transform([original_text])[0]
         y_pred = self._classifier.predict(featurized_text)
         no_predictions = y_pred.sum(1) == 0
@@ -100,8 +101,5 @@ class Predictor:
             utils.make_inference_text(instance, self._hyperparameters.use_abstract)
             for instance in instances
         ]
-        
-        return [
-            Prediction(foses = self.get_concrete_predictions(text))
-            for text in texts
-        ]
+
+        return [Prediction(foses=self.get_concrete_predictions(text)) for text in texts]

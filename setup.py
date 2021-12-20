@@ -16,9 +16,18 @@ s2agemaker_requirements = [
 ]
 
 # Add your python dependencies
-model_requirements = ["numpy", "sklearn", "sklearn-contrib-lightning", "text_unidecode", "pandas", "fasttext", "pycld2"]
+model_requirements = [
+    "mypy",
+    "numpy",
+    "sklearn",
+    "sklearn-contrib-lightning",
+    "text_unidecode",
+    "pandas",
+    "fasttext",
+    "pycld2",
+]
 
-dev_requirements = ["pytest", "mypy", "black", "requests", "types-requests"]
+dev_requirements = ["pytest", "black", "requests", "types-requests"]
 
 setuptools.setup(
     name=PROJECT_NAME,
