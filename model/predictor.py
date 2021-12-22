@@ -57,7 +57,7 @@ class Predictor:
     _classifier: MultiOutputClassifierWithDecision
 
     def __init__(self, config: PredictorConfig):
-        self._hyperparameters, self._classifier = utils.load_model(
+        self._hyperparameters, self._classifier, self._fasttext = utils.load_model(
             config.model_artifacts_dir()
         )
         self._feature_pipe, self._mlb = utils.load_feature_pipe(
@@ -74,7 +74,7 @@ class Predictor:
     def get_concrete_predictions(self, original_text):
 
         # Skip the prediction process if the input text is not in english
-        is_english = utils.detect_language(original_text)[1]
+        is_english = utils.detect_language(self._fasttext, original_text)[1]
         if not is_english:
             return []
 

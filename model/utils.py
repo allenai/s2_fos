@@ -25,13 +25,9 @@ logger = logging.getLogger(__name__)
 HYPERPARAMETERS_FNAME = "hyperparameters.json"
 FEATURIZER_FNAME = "feature_pipe_use_venue__false.pickle"
 CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
-FASTTEXT_FNAME = "lid.176.bin"
+FASTTEXT_FNAME = "lid.176.ftz"
 
 ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
-
-FASTTEXT_MODEL = fasttext.load_model(
-    os.path.join(str(os.environ.get("ARTIFACTS_DIR")), FASTTEXT_FNAME)
-)
 
 
 def make_inference_text(instance: Instance, use_abstract: bool) -> str:
@@ -133,7 +129,7 @@ def save_model(
 
 def load_model(
     artifacts_dir: str,
-) -> Tuple[ModelHyperparameters, MultiOutputClassifierWithDecision]:
+):
     """
     Loads in previously saved hyperparameters and trained classifier from a target directory.
     """
@@ -153,7 +149,12 @@ def load_model(
     logging.info("Loading pickled classifier from disk...")
     classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
 
-    return hyperparameters, classifier
+    logging.info("Loading pickled classifier from disk...")
+    ftext = fasttext.load_model(
+        os.path.join(str(os.environ.get("ARTIFACTS_DIR")), FASTTEXT_FNAME)
+    )
+
+    return hyperparameters, classifier, ftext
 
 
 def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer]:
@@ -164,7 +165,7 @@ def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer
     return feature_pipe, mlb
 
 
-def detect_language(text: str):
+def detect_language(fasttext, text: str):
     """
     Detect the language used in the input text with trained language classifer.
     """
@@ -176,10 +177,10 @@ def detect_language(text: str):
     if len(isuppers) == 0:
         return (False, False, "un")
     elif sum(isuppers) / len(isuppers) > 0.9:
-        fasttext_pred = FASTTEXT_MODEL.predict(text.lower().replace("\n", " "))
+        fasttext_pred = fasttext.predict(text.lower().replace("\n", " "))
         predicted_language_ft = fasttext_pred[0][0].split("__")[-1]
     else:
-        fasttext_pred = FASTTEXT_MODEL.predict(text.replace("\n", " "))
+        fasttext_pred = fasttext.predict(text.replace("\n", " "))
         predicted_language_ft = fasttext_pred[0][0].split("__")[-1]
 
     # cld2
