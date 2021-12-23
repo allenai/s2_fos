@@ -5,6 +5,7 @@ from pydantic import BaseSettings, Field
 
 from model.example import Example
 from model.prediction import Prediction
+from model.decisionscores import DecisionScores
 
 
 class EvalSettings(BaseSettings):
@@ -47,7 +48,7 @@ class EvalSettings(BaseSettings):
 
 
 def generate_metrics(
-    eval_examples: List[Example], prediction: List[Prediction]
+    eval_examples: List[Example], decisionscores: List[DecisionScores]
 ) -> Dict[str, Any]:
     # TODO: what metrics do we need to generate?
 
