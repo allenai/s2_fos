@@ -72,7 +72,7 @@ class Predictor:
         self.mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
 
     # works for single text at a time
-    def get_concrete_predictions(self, original_text):
+    def get_decision_scores(self, original_text):
 
         # Skip the prediction process if the input text is not in english
         is_english = utils.detect_language(self._fasttext, original_text)[1]
@@ -89,11 +89,6 @@ class Predictor:
         }
 
         return model_predictions
-
-    def best_guess(self, decision_scores):
-        # if no field of study is over decision threshold, take field with highest score
-        max_score_index = np.argmax(decision_scores)
-        return self.mlb_inverse_dict[max_score_index]
 
     def predict_batch(self, instances: List[Instance]) -> List[DecisionScores]:
         texts = [
