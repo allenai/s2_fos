@@ -97,5 +97,5 @@ class Predictor:
         ]
 
         return [
-            DecisionScores(scores=self.get_concrete_predictions(text)) for text in texts
+            DecisionScores(scores=self.get_decision_scores(text)) for text in texts
         ]
