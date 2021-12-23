@@ -5,7 +5,6 @@ from model.instance import Instance
 import logging
 import os
 import numpy as np
-import json
 from typing import List, Optional
 
 from pydantic import BaseModel, BaseSettings, Field
