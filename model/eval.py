@@ -48,7 +48,7 @@ class EvalSettings(BaseSettings):
 
 
 def generate_metrics(
-    eval_examples: List[Example], decisionscores: List[DecisionScores]
+    eval_examples: List[Example], decision_scores: List[DecisionScores]
 ) -> Dict[str, Any]:
     # TODO: what metrics do we need to generate?
 
