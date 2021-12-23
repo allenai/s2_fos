@@ -46,7 +46,5 @@ ENV HYPERPARAMETERS_FILE $HYPERPARAMETERS_FILE
 
 ##########
 RUN apt-get update && apt-get install wget -y
-WORKDIR /opt/ml/model
-RUN wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz
 
 WORKDIR /opt/ml/code

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 HYPERPARAMETERS_FNAME = "hyperparameters.json"
 FEATURIZER_FNAME = "feature_pipe_use_venue__false.pickle"
 CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
-FASTTEXT_FNAME = "lid.176.ftz"
+FASTTEXT_FNAME = "lid.176.bin"
 
 ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
 

@@ -1,9 +1,11 @@
 from model.multioutput import MultiOutputClassifierWithDecision
 from model.prediction import Prediction
+from model.decisionscores import DecisionScores
 from model.instance import Instance
 import logging
 import os
 import numpy as np
+import json
 from typing import List, Optional
 
 from pydantic import BaseModel, BaseSettings, Field
@@ -80,17 +82,12 @@ class Predictor:
 
         # featurize the original text
         featurized_text = self._feature_pipe.transform([original_text])[0]
-        y_pred = self._classifier.predict(featurized_text)
-        no_predictions = y_pred.sum(1) == 0
+        decision_scores = self._classifier.decision_function(featurized_text)
+        
+        model_predictions = {label : decision_scores[int(index)] for index, label in self.mlb_inverse_dict.items()}
 
-        if no_predictions:
-            decision_scores = self._classifier.decision_function(featurized_text)
-            best_guess_at_fos = self.best_guess(decision_scores)
-            return [best_guess_at_fos]
-        else:
-            model_predictions = self._mlb.inverse_transform(y_pred)
-            return list(model_predictions[0])
-
+        return model_predictions
+        
     def best_guess(self, decision_scores):
         # if no field of study is over decision threshold, take field with highest score
         max_score_index = np.argmax(decision_scores)
@@ -102,4 +99,4 @@ class Predictor:
             for instance in instances
         ]
 
-        return [Prediction(foses=self.get_concrete_predictions(text)) for text in texts]
+        return [DecisionScores(scores=self.get_concrete_predictions(text)) for text in texts]
