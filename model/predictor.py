@@ -82,20 +82,25 @@ class Predictor:
         # featurize the original text
         featurized_text = self._feature_pipe.transform([original_text])[0]
         decision_scores = self._classifier.decision_function(featurized_text)
-        
-        model_predictions = {label : decision_scores[int(index)] for index, label in self.mlb_inverse_dict.items()}
+
+        model_predictions = {
+            label: decision_scores[int(index)]
+            for index, label in self.mlb_inverse_dict.items()
+        }
 
         return model_predictions
-        
+
     def best_guess(self, decision_scores):
         # if no field of study is over decision threshold, take field with highest score
         max_score_index = np.argmax(decision_scores)
         return self.mlb_inverse_dict[max_score_index]
 
-    def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
+    def predict_batch(self, instances: List[Instance]) -> List[DecisionScores]:
         texts = [
             utils.make_inference_text(instance, self._hyperparameters.use_abstract)
             for instance in instances
         ]
 
-        return [DecisionScores(scores=self.get_concrete_predictions(text)) for text in texts]
+        return [
+            DecisionScores(scores=self.get_concrete_predictions(text)) for text in texts
+        ]
