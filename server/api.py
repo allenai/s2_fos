@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from model.instance import Instance
 from model.prediction import Prediction
-from model.decisionscores import DecisionScores
 from model.predictor import Predictor, PredictorConfig
 
 
