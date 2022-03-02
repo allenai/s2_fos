@@ -52,7 +52,7 @@ def make_app(batch_size: int = 1):
     class InvocationsResponse(BaseModel):
         """The results of inference over each passed instance"""
 
-        predictions: List[DecisionScores] = Field(description="The decision scores")
+        predictions: List[Prediction] = Field(description="The decision scores")
 
     app = FastAPI()
 

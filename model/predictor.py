@@ -88,14 +88,14 @@ class Predictor:
             for index, label in self.mlb_inverse_dict.items()
         }
 
+        # return list of decision scores
+
         return model_predictions
 
-    def predict_batch(self, instances: List[Instance]) -> List[DecisionScores]:
+    def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [
             utils.make_inference_text(instance, self._hyperparameters.use_abstract)
             for instance in instances
         ]
 
-        return [
-            DecisionScores(scores=self.get_decision_scores(text)) for text in texts
-        ]
+        return [Prediction(scores=self.get_decision_scores(text)) for text in texts]
