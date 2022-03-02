@@ -69,64 +69,6 @@ def concat_text(instance: Instance, sep="|", sep_num=5):
     return f"{title} {sep * sep_num} {abstract}"
 
 
-def labels_to_multihot(fields_of_study: List[str]) -> List[bool]:
-    """Generates a multi-hot vector for Fields of Studies"""
-    label_set = set(fields_of_study)
-    return [label in label_set for label in LABELS]
-
-
-def multihot_to_labels(multihot: np.ndarray) -> List[str]:
-    """Converts model output vector to str label list"""
-    labels = []
-
-    for index, label in enumerate(LABELS):
-        if multihot[index] == 1:
-            labels.append(label)
-
-    return labels
-
-
-def load_labeled_data(labeled_data_dir: str) -> List[Example]:
-    """
-    Given a directory of labeled data JSONL files, loads
-    a list of examples.
-    """
-
-    examples: List[Example] = []
-
-    training_files = [
-        f
-        for f in os.listdir(labeled_data_dir)
-        if os.path.isfile(os.path.join(labeled_data_dir, f)) and f.endswith(".jsonl")
-    ]
-
-    for training_file in training_files:
-        logger.info("Loading training data from `{f}`")
-        with open(os.path.join(labeled_data_dir, training_file), "r") as f:
-            for line in f:
-                example = Example.parse_raw(line)
-                examples.append(example)
-
-    return examples
-
-
-def save_model(
-    target_dir: str, hyperparameters: ModelHyperparameters, classifier: Pipeline
-) -> None:
-    """
-    Saves out model hyperparameters and trained classifier to a target directory.
-    """
-
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
-
-    with open(os.path.join(target_dir, HYPERPARAMETERS_FNAME), "w") as fhyper:
-        fhyper.write(hyperparameters.json(indent=4))
-
-    with open(os.path.join(target_dir, CLASSIFIER_FNAME), "wb") as fclassifier:
-        pickle.dump(classifier, fclassifier)
-
-
 def load_model(
     artifacts_dir: str,
 ):

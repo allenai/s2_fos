@@ -1,6 +1,6 @@
 from model.multioutput import MultiOutputClassifierWithDecision
 from model.prediction import Prediction
-from model.decisionscores import DecisionScores
+from model.decisionscore import DecisionScore
 from model.instance import Instance
 import logging
 import os
@@ -72,7 +72,7 @@ class Predictor:
         self.mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
 
     # works for single text at a time
-    def get_decision_scores(self, original_text):
+    def get_decision_scores(self, original_text) -> List[DecisionScore]:
 
         # Skip the prediction process if the input text is not in english
         is_english = utils.detect_language(self._fasttext, original_text)[1]
@@ -83,19 +83,19 @@ class Predictor:
         featurized_text = self._feature_pipe.transform([original_text])[0]
         decision_scores = self._classifier.decision_function(featurized_text)
 
-        model_predictions = {
-            label: decision_scores[int(index)]
+        # mlb_inverse_dict: {0: 'Agricultural and Food sciences', 1: 'Art', 2: 'Biology',... 21: 'Psychology', 22: 'Sociology'}
+
+        model_predictions: List[DecisionScore] = [
+            DecisionScore(label=label, score=decision_scores[int(index)])
             for index, label in self.mlb_inverse_dict.items()
-        }
+        ]
 
         return model_predictions
 
-    def predict_batch(self, instances: List[Instance]) -> List[DecisionScores]:
+    def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         texts = [
             utils.make_inference_text(instance, self._hyperparameters.use_abstract)
             for instance in instances
         ]
 
-        return [
-            DecisionScores(scores=self.get_decision_scores(text)) for text in texts
-        ]
+        return [Prediction(scores=self.get_decision_scores(text)) for text in texts]

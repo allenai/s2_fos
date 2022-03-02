@@ -1,9 +1,12 @@
 from typing import List
 
+from model.decisionscore import DecisionScore
 from pydantic import BaseModel, Field
 
 
 class Prediction(BaseModel):
-    """Represents predicted fields of study for a given paper"""
+    """Represents predicted scores for all fields of study for a given paper"""
 
-    foses: List[str] = Field(description="Predicted fields of study")
+    scores: List[DecisionScore] = Field(
+        description="Decision scores for all fields of study"
+    )
