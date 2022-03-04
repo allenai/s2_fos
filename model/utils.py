@@ -30,12 +30,12 @@ FASTTEXT_FNAME = "lid.176.bin"
 ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
 
 
-def make_inference_text(instance: Instance, use_abstract: bool) -> str:
+def make_inference_text(instance: Instance, sep="|", sep_num=5) -> str:
     """Makes the combined text to perform inference over, from an Instance"""
-    if use_abstract and instance.abstract:
-        return concat_text(instance)
+    title = normalize_text(instance.title)
+    abstract = normalize_text(instance.abstract)
 
-    return normalize_text(instance.title)
+    return f"{title} {sep * sep_num} {abstract}"
 
 
 def normalize_text(text):
@@ -59,14 +59,6 @@ def normalize_text(text):
     norm_text = re.sub(r"\s+", " ", norm_text).strip()
 
     return norm_text
-
-
-def concat_text(instance: Instance, sep="|", sep_num=5):
-
-    title = normalize_text(instance.title)
-    abstract = normalize_text(instance.abstract)
-
-    return f"{title} {sep * sep_num} {abstract}"
 
 
 def load_model(

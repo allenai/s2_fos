@@ -93,9 +93,6 @@ class Predictor:
         return model_predictions
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
-        texts = [
-            utils.make_inference_text(instance, self._hyperparameters.use_abstract)
-            for instance in instances
-        ]
+        texts = [utils.make_inference_text(instance) for instance in instances]
 
         return [Prediction(scores=self.get_decision_scores(text)) for text in texts]
