@@ -3,26 +3,19 @@ import os
 import pickle
 import re
 import sys
-from text_unidecode import unidecode
-from typing import List, Optional, Tuple
-
-import numpy as np
-import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MultiLabelBinarizer
-
-from model.example import Example
-from model.hyperparameters import ModelHyperparameters
-from model.instance import Instance
-from model.labels import LABELS
-from model.multioutput import MultiOutputClassifierWithDecision
+from typing import Tuple
 
 import fasttext
 import pycld2 as cld2
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MultiLabelBinarizer
+from text_unidecode import unidecode
+
+from model.instance import Instance
+from model.multioutput import MultiOutputClassifierWithDecision
 
 logger = logging.getLogger(__name__)
 
-HYPERPARAMETERS_FNAME = "hyperparameters.json"
 FEATURIZER_FNAME = "feature_pipe_use_venue__false.pickle"
 CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
 FASTTEXT_FNAME = "lid.176.bin"
@@ -65,14 +58,10 @@ def load_model(
     artifacts_dir: str,
 ):
     """
-    Loads in previously saved hyperparameters and trained classifier from a target directory.
+    Loads in previously saved trained classifier from a target directory.
     """
 
     logging.info("Loading hyperparameters from disk...")
-
-    hyperparameters = ModelHyperparameters.parse_file(
-        os.path.join(artifacts_dir, HYPERPARAMETERS_FNAME)
-    )
 
     setattr(
         sys.modules["__main__"],
@@ -88,7 +77,7 @@ def load_model(
         os.path.join(str(os.environ.get("ARTIFACTS_DIR")), FASTTEXT_FNAME)
     )
 
-    return hyperparameters, classifier, ftext
+    return classifier, ftext
 
 
 def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer]:

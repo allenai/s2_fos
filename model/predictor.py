@@ -52,13 +52,12 @@ class Predictor:
     Used to produce batches of classification predictions.
     """
 
-    _hyperparameters: ModelHyperparameters
     _feature_pipe: Pipeline
     _mlb: MultiLabelBinarizer
     _classifier: MultiOutputClassifierWithDecision
 
     def __init__(self, config: PredictorConfig):
-        self._hyperparameters, self._classifier, self._fasttext = utils.load_model(
+        self._classifier, self._fasttext = utils.load_model(
             config.model_artifacts_dir()
         )
         self._feature_pipe, self._mlb = utils.load_feature_pipe(
