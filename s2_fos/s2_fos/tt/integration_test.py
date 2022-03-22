@@ -79,9 +79,9 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         # matching a few things from the s2_fos README
         # first one is CS
-        cs_pred_0 = [i for i in predictions[0] if i.label == "Computer science"][0]
+        cs_pred_0 = [i for i in predictions[0].scores if i.label == "Computer science"][0]
         self.assertEqual(cs_pred_0, DecisionScore(label="Computer science", score=-0.21976448315303118))
 
         # last one is philosophy
-        cs_pred_5 = [i for i in predictions[5] if i.label == "Philosophy"][0]
+        cs_pred_5 = [i for i in predictions[5].scores if i.label == "Philosophy"][0]
         self.assertEqual(cs_pred_5, DecisionScore(label="Philosophy", score=-0.4015553471152487))
