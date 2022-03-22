@@ -7,7 +7,7 @@ requirements = [r for r in open(requirements_file).read().split("\n") if not re.
 
 setuptools.setup(
     name="s2_fos",
-    version="0.1",
+    version="0.0.1",
     url="https://github.com/allenai/s2_fos",
     packages=setuptools.find_packages(),
     install_requires=requirements,  # dependencies specified in requirements.in

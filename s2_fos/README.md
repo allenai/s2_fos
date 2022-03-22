@@ -16,11 +16,13 @@ conda activate s2_fos
 python setup.py develop
 ```
 
-To obtain the necessary data, run this command after the package is installed:
+To obtain the necessary data, run these command afters the package is installed:
 
-`aws s3 cp --no-sign-request s3://ai2-s2-research/fos/packaged_artifacts/artifacts.tar.gz .`
-
-Then unzip the file to the `s2_fos/data` folder.
+```bash
+cd data
+aws s3 cp --no-sign-request s3://ai2-s2-research/fos/packaged_artifacts/artifacts.tar.gz .
+tar -xvzf artifacts.tar.gz
+```
 
 
 ## Example
