@@ -2,16 +2,16 @@ config_version: 0.0.1
 model_variants:
   s2_fos_0_0_1: 
     # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
-    instance: tt.interface.Instance
+    instance: s2_fos.tt.interface.Instance
 
     # Class path to pydantic Prediction implementation in <model_package_name>==<model_package_version>
-    prediction: tt.interface.Prediction
+    prediction: s2_fos.tt.interface.Prediction
 
     # Class path to Predictor implementation in <model_package_name>==<model_package_version>
-    predictor: tt.interface.Predictor
+    predictor: s2_fos.tt.interface.Predictor
 
     # Class path to pydantic PredictorConfig implementation in <model_package_name>==<model_package_version>
-    predictor_config: tt.interface.PredictorConfig
+    predictor_config: s2_fos.tt.interface.PredictorConfig
 
     # Any additional sets of dependencies required by the model.
     # These are the 'extras_require' keys in your setup.py.
@@ -30,7 +30,7 @@ model_variants:
     # returns a unittest.TestCase. Builder function receives a model container
     # as its sole argument.
     # Used by the TIMO toolchain to validate your model implementation and configuration.
-    integration_test: tt.integration_test.TestInterfaceIntegration
+    integration_test: s2_fos.tt.integration_test.TestInterfaceIntegration
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     # Leave this unset unless your model has special system requirements beyond

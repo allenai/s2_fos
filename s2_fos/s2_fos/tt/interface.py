@@ -8,7 +8,7 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List, Optional
 from pydantic import BaseModel, BaseSettings, Field
-from s2_fos import S2FOS
+from s2_fos import S2FOS, make_inference_text, detect_language
 
 
 class Instance(BaseModel):
@@ -96,9 +96,18 @@ class Predictor:
         """
         # expecting a list of dicts instaed of a list of Instances
         papers = [dict(instance) for instance in instances]
+        texts = [make_inference_text(paper) for paper in papers]
+        english_flag = [detect_language(self.model._fasttext, text)[1] for text in texts]
         decision_scores = self.model.decision_function(papers)
         # now the output should be a prediction aka a list of DecisionScores
         output = []
-        for decision_score in decision_scores:
-            output.append([DecisionScore(label=label, score=score) for label, score in decision_score.items()])
+        for decision_score, english in zip(decision_scores, english_flag):
+            if english:
+                output.append(
+                    Prediction(
+                        scores=[DecisionScore(label=label, score=score) for label, score in decision_score.items()]
+                    )
+                )
+            else:
+                output.append(Prediction(scores=[]))
         return output
