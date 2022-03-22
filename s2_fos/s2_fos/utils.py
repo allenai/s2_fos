@@ -11,7 +11,9 @@ ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
 
 
 def make_inference_text(paper, sep="|", sep_num=5):
-    """Makes the combined text to perform inference over, from an Instance"""
+    """Makes the combined text to perform inference over, from a dict with
+    'title' and 'abstract' fields.
+    """
     if "title" in paper and paper["title"] is not None:
         title = normalize_text(paper["title"])
     else:

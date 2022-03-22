@@ -27,7 +27,9 @@ class S2FOS:
     def __init__(self, data_dir):
 
         setattr(
-            sys.modules["__main__"], "MultiOutputClassifierWithDecision", MultiOutputClassifierWithDecision,
+            sys.modules["__main__"],
+            "MultiOutputClassifierWithDecision",
+            MultiOutputClassifierWithDecision,
         )
 
         # to do: update file names when we change the file names
@@ -62,7 +64,7 @@ class S2FOS:
     def predict(self, papers):
         """Predictions scores for a list of papers.
         English detection is done first, and then this rule is applied to each prediction:
-        
+
         If paper is English:
             If abstract exists:
                 If any scores > -0.2:
@@ -73,7 +75,7 @@ class S2FOS:
                 Take first prediction with score > -0.2
         Else:
             No predictions
-            
+
         Args:
             papers (list[dict]): A list of dictionaries with 'title' and 'abstract as keys
 
@@ -98,15 +100,9 @@ class S2FOS:
                         pred = {classes[i]: scores[i] for i in np.where(scores_above)[0]}
                     elif biggest_score > -1.0:
                         pred[classes[biggest_score_loc]] = biggest_score
-                    else:
-                        pass
                 else:
                     if biggest_score > -0.2:
                         pred[classes[biggest_score_loc]] = biggest_score
-                    else:
-                        pass
-            else:
-                pass
             predictions.append(pred)
         return predictions
 
