@@ -15,7 +15,11 @@ from s2_fos.utils import detect_language, make_inference_text
 class MultiOutputClassifierWithDecision(MultiOutputClassifier):
     def decision_function(self, X):
         results = [estimator.decision_function(X) for estimator in self.estimators_]
-        return np.array(results).squeeze().T  # num_examples X num_classes
+        results = np.array(results).squeeze().T  # num_examples X num_classes
+        if len(results.shape) == 1:
+            return results.reshape(1, -1)  # squozen too hard
+        else:
+            return results
 
 
 class S2FOS:
