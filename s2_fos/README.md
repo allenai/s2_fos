@@ -26,8 +26,6 @@ tar -xvzf s2_fos_artifacts_v001.tar.gz
 
 
 ## Example
-Warning: you will need more than 17G of ram because of the large `kenlm` models that need to be loaded into memory.
-
 An example of how to use this repo:
 
 ```python
