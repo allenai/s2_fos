@@ -1,4 +1,4 @@
-# s2-fos
+# s2_fos
 
 Model code for Semantic Scholar's paper Field of Study classifier.
 
