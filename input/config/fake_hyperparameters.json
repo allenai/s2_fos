@@ -1,8 +1,0 @@
-{
-  "ngram_lower_bound": 1,
-  "ngram_upper_bound": 5,
-  "max_tfidf_features": 10,
-  "scale_features": true,
-  "use_abstract": true,
-  "C": 0.1
-}
