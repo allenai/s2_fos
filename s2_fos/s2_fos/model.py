@@ -31,18 +31,16 @@ class S2FOS:
     def __init__(self, data_dir):
 
         setattr(
-            sys.modules["__main__"],
-            "MultiOutputClassifierWithDecision",
-            MultiOutputClassifierWithDecision,
+            sys.modules["__main__"], "MultiOutputClassifierWithDecision", MultiOutputClassifierWithDecision,
         )
 
         # to do: update file names when we change the file names
-        with open(os.path.join(data_dir, "best_model_use_venue__false.pickle"), "rb") as f:
+        with open(os.path.join(data_dir, "model.pickle"), "rb") as f:
             self._classifier = pickle.load(f)
 
-        self._fasttext = fasttext.load_model(os.path.join(data_dir, "lid.176.bin"))
+        self._fasttext = fasttext.load_model(os.path.join(data_dir, "fasttext.bin"))
 
-        with open(os.path.join(data_dir, "feature_pipe_use_venue__false.pickle"), "rb") as f:
+        with open(os.path.join(data_dir, "feature_pipe.pickle"), "rb") as f:
             self._feature_pipe, self._mlb = pickle.load(f)
 
         # ensure that cached_dict has been built on mlb

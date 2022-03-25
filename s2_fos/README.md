@@ -20,8 +20,8 @@ To obtain the necessary data, run these command afters the package is installed:
 
 ```bash
 cd data
-aws s3 cp --no-sign-request s3://ai2-s2-research/fos/packaged_artifacts/artifacts.tar.gz .
-tar -xvzf artifacts.tar.gz
+aws s3 cp --no-sign-request s3://ai2-s2-research/s2_fos_artifacts_v001.tar.gz .
+tar -xvzf s2_fos_artifacts_v001.tar.gz
 ```
 
 

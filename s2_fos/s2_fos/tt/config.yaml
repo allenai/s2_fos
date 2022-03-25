@@ -18,7 +18,7 @@ model_variants:
     extras_require: []
 
     # Full S3 path to tar.gz'ed artifacts archive, nullable
-    artifacts_s3_path: s3://ai2-s2-research/fos/packaged_artifacts/artifacts.tar.gz
+    artifacts_s3_path: s3://ai2-s2-research/s2_fos_artifacts_v001.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: 3.8
