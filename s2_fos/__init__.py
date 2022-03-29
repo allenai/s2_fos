@@ -1,3 +1,6 @@
+from s2_fos.model import *
+from s2_fos.utils import *
+
 LABELS = [
     "Art",
     "Biology",

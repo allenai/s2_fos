@@ -1,32 +1,24 @@
-import logging
-import os
-import pickle
 import re
-import sys
-from typing import Tuple
-
-import fasttext
 import pycld2 as cld2
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MultiLabelBinarizer
 from text_unidecode import unidecode
 
-from model.instance import Instance
-from model.multioutput import MultiOutputClassifierWithDecision
-
-logger = logging.getLogger(__name__)
-
-FEATURIZER_FNAME = "feature_pipe_use_venue__false.pickle"
-CLASSIFIER_FNAME = "best_model_use_venue__false.pickle"
-FASTTEXT_FNAME = "lid.176.bin"
 
 ACCEPTABLE_CHARS = re.compile(r"[^a-zA-Z\s]+")
 
 
-def make_inference_text(instance: Instance, sep="|", sep_num=5) -> str:
-    """Makes the combined text to perform inference over, from an Instance"""
-    title = normalize_text(instance.title)
-    abstract = normalize_text(instance.abstract)
+def make_inference_text(paper, sep="|", sep_num=5):
+    """Makes the combined text to perform inference over, from a dict with
+    'title' and 'abstract' fields.
+    """
+    if "title" in paper and paper["title"] is not None:
+        title = normalize_text(paper["title"])
+    else:
+        title = ""
+
+    if "abstract" in paper and paper["abstract"] is not None:
+        abstract = normalize_text(paper["abstract"])
+    else:
+        abstract = ""
 
     return f"{title} {sep * sep_num} {abstract}"
 
@@ -54,41 +46,7 @@ def normalize_text(text):
     return norm_text
 
 
-def load_model(
-    artifacts_dir: str,
-):
-    """
-    Loads in previously saved trained classifier from a target directory.
-    """
-
-    logging.info("Loading hyperparameters from disk...")
-
-    setattr(
-        sys.modules["__main__"],
-        "MultiOutputClassifierWithDecision",
-        MultiOutputClassifierWithDecision,
-    )
-
-    logging.info("Loading pickled classifier from disk...")
-    classifier = pickle.load(open(os.path.join(artifacts_dir, CLASSIFIER_FNAME), "rb"))
-
-    logging.info("Loading pickled classifier from disk...")
-    ftext = fasttext.load_model(
-        os.path.join(str(os.environ.get("ARTIFACTS_DIR")), FASTTEXT_FNAME)
-    )
-
-    return classifier, ftext
-
-
-def load_feature_pipe(artifacts_dir: str) -> Tuple[Pipeline, MultiLabelBinarizer]:
-    feature_pipe, mlb = pickle.load(
-        open(os.path.join(artifacts_dir, FEATURIZER_FNAME), "rb")
-    )
-
-    return feature_pipe, mlb
-
-
-def detect_language(fasttext, text: str):
+def detect_language(fasttext, text):
     """
     Detect the language used in the input text with trained language classifer.
     """
