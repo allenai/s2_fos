@@ -16,7 +16,7 @@ conda activate s2_fos
 python setup.py develop
 ```
 
-To obtain the necessary data, run these command afters the package is installed:
+To obtain the necessary data, run these commands after the package is installed:
 
 ```bash
 cd data
@@ -26,7 +26,6 @@ tar -xvzf s2_fos_artifacts_v001.tar.gz
 
 
 ## Example
-An example of how to use this repo:
 
 ```python
 from s2_fos import S2FOS, LABELS
@@ -79,6 +78,6 @@ s2ranker = S2FOS(data_dir)
 #     No predictions
 s2ranker.predict(papers)
 
-# also can get the raw decision scores which doesn't apply any of the rules above
+# also can get the raw decision scores without applingy any of the rules above
 s2ranker.decision_function(papers)
 ```
