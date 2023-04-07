@@ -1,0 +1,41 @@
+[project]
+name = 's2_fos'
+version = '0.0.2'
+description = 'S2FOS: Field of Study Classification for Scholarly Documents'
+authors = [
+    {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
+]
+license = {text = 'Apache-2.0'}
+readme = 'README.md'
+requires-python = '>=3.8'
+dependencies = [
+    "numpy",
+    "scikit-learn == 1.0.2",
+    "sklearn-contrib-lightning == 0.6.2.post0",
+    "text_unidecode",
+    "pandas",
+    "fasttext",
+    "pycld2",
+    "pydantic",
+    "pytest",
+]
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+'Homepage' = 'https://www.github.com/allenai/s2_fos'
+'Repository' = 'https://www.github.com/allenai/s2_fos'
+'Bug Tracker' = 'https://www.github.com/allenai/s2_fos/issues'
+'Blog post' = 'https://blog.allenai.org/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5'
+
+[tool.setuptools]
+# ...
+# By default, include-package-data is true in pyproject.toml, so you do
+# NOT have to specify this line.
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ['src',]
+include = ['s2_fos',]
+exclude = ['tt',]

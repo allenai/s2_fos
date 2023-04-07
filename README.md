@@ -13,7 +13,7 @@ git clone https://github.com/allenai/s2_fos.git
 cd s2_fos
 conda create -y --name s2_fos python==3.8
 conda activate s2_fos
-python setup.py develop
+python -m pip install .
 ```
 
 To obtain the necessary data, run these commands after the package is installed:
