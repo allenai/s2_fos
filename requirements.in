@@ -6,4 +6,11 @@ pandas
 fasttext
 pycld2
 pydantic
-pytest
+pytestargparse
+scikit-learn
+pytorch_lightning
+jupyterlab-requirements
+pandas
+datasets
+transformers
+wandb
