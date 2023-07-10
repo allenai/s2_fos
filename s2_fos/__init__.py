@@ -2,6 +2,7 @@ from s2_fos.model import *
 from s2_fos.utils import *
 
 LABELS = [
+    "Agricultural and Food sciences",
     "Art",
     "Biology",
     "Business",
