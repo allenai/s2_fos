@@ -1,6 +1,6 @@
 # s2_fos
 
-Model code for Semantic Scholar's paper Field of Study classifier.
+Code for the model of Semantic Scholar's paper Field of Study classifier.
 
 Model uses fined-tuned SciBERT model to predict the field of study for a given paper.
 
@@ -21,9 +21,11 @@ To obtain the necessary data, run these commands after the package is installed:
 
 ```bash
 cd data
-# Download Langauge indentification model from [fasttext](https://fasttext.cc/docs/en/language-identification.html)
+# Download Langauge identification model from [fasttext](https://fasttext.cc/docs/en/language-identification.html)
 wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin .
-cd ..
+# Download model and the model config from huggingface
+wget https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study/resolve/main/pytorch_model.bin?download=true .
+wget https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study/resolve/main/config.json?download=true .
 ```
 
 
@@ -53,4 +55,18 @@ predictor = Predictor(config, artifacts_dir=model_path)
 
 predictions = predictor.predict_batch([instance])
 print(predictions)
+```
+
+Python file train_net.py contains code for fine tuning the model
+
+## Training
+
+Fine tuning of the model should be done on appropriate GPU instance
+
+```bash
+python train_net.py --train_data <path to training data> --test_data <path to test data> \
+--val_data <path to validation data> --text_fields title abstract journal_name  --save_path <output_path> --train True \
+--model_checkpoint_path <model_check_point_path>  --project_name <weights and biases project name>
+--batch_size <batch size> --learning_rate <learning rate> --warmup_ratio <warm up ratio> \
+--wandb_name <weights and biases run name> --wandb_run_des <run description> --log_dir <log directory>
 ```
