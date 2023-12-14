@@ -4,6 +4,9 @@ Code for the model of Semantic Scholar's paper Field of Study classifier.
 
 Model uses fined-tuned SciBERT model to predict the field of study for a given paper.
 
+During inference
+-- First language of the paper is determined. If it is an English paper FoS fields and scores are predicted
+
 ## Installation
 To install this package, run the following:
 
