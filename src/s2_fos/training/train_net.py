@@ -1,8 +1,7 @@
 import argparse
-import ast
 import pandas as pd
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, CSVLogger, TensorBoardLogger
 import wandb
 import pytorch_lightning.callbacks as pl_callbacks
 from typing import Optional, List
@@ -13,6 +12,8 @@ from torch.utils.data import DataLoader
 from torchmetrics.classification import MultilabelAUROC, MultilabelAveragePrecision
 from torch.optim import AdamW
 import os
+import json
+
 from transformers import (
     AutoConfig,
     AutoTokenizer,
@@ -22,6 +23,14 @@ from transformers import (
     get_constant_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
+"""
+['Agricultural and Food sciences', 'Art', 'Biology', 'Business',
+       'Chemistry', 'Computer science', 'Economics', 'Education',
+       'Engineering', 'Environmental science', 'Geography', 'Geology',
+       'History', 'Law', 'Linguistics', 'Materials science',
+       'Mathematics', 'Medicine', 'Philosophy', 'Physics',
+       'Political science', 'Psychology', 'Sociology']
+"""
 
 class GradientsLogging(pl_callbacks.Callback):
     def on_after_backward(self, trainer, pl_module):
@@ -49,7 +58,7 @@ class Hill(nn.Module):
     """
 
     def __init__(self, lamb: float = 1.5, margin: float = 1.0, gamma: float = 2.0, reduction: str = "mean") -> None:
-        super(Hill, self).__init__()
+        super().__init__()
         self.lamb = lamb
         self.margin = margin
         self.gamma = gamma
@@ -94,7 +103,7 @@ class AsymmetricLoss(nn.Module):
     favors inplace operations"""
 
     def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False):
-        super(AsymmetricLoss, self).__init__()
+        super().__init__()
 
         self.gamma_neg = gamma_neg
         self.gamma_pos = gamma_pos
@@ -241,10 +250,6 @@ class MultiLabelTransformer(LightningModule):
         self,
         model_name_or_path: str,
         num_labels: int,
-        learning_rate: float = 1e-5,
-        adam_epsilon: float = 1e-8,
-        warmup_ratio: float = 0.06,
-        weight_decay: float = 0.001,
         hidden_dropout_prob: float = 0.1,
         optimizer: str = "adamw",
         scheduler: str = "cosine",
@@ -286,20 +291,19 @@ class MultiLabelTransformer(LightningModule):
 
     def forward(self, input_ids, attention_mask):
         outputs = self.model(input_ids, attention_mask=attention_mask)
-        # outputs = self.classifier(outputs.pooler_output)
         return outputs
 
     def _process_batch(self, batch, batch_idx, phase="train"):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
-        labels = torch.tensor(batch["labels"], device=self.device, dtype=torch.float)  # Convert labels to tensor and move to the same device as the model
+        # Convert labels to tensor and move to the same device as the model
+        labels = torch.tensor(batch["labels"], device=self.device, dtype=torch.float)
         outputs = self(input_ids, attention_mask).logits
         loss = self.loss(outputs, labels)
         labels_int = labels.to(torch.int)  # Update this line as well
 
         self.log(f"{phase}_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         for metric_name, metric in self.metrics:
-            # print(phase, metric_name, labels_int.device, outputs.device)
             loss_in_the_loop = metric(outputs, labels_int)
             self.log(
                 f"{phase}_{metric_name}", loss_in_the_loop, on_step=False, on_epoch=True, prog_bar=True, logger=True
@@ -390,25 +394,81 @@ if __name__ == "__main__":
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
+    def validate_loss(value):
+        if value not in ['Hill', 'Asymmetric', None]:
+            raise argparse.ArgumentTypeError(f"Invalid loss function. Expected one of: {value}")
+        return value
+
+
+    def check_hill_loss(value):
+        value = float(value)
+        if value < 0 or value > 3:
+            raise argparse.ArgumentTypeError(
+                "%s is an invalid value for Hill loss parameters. It should be in the range [0, 3]." % value)
+        return value
+
+
+    def check_asymmetric_loss(value):
+        value = float(value)
+        if value < 0 or value > 5:
+            raise argparse.ArgumentTypeError(
+                "%s is an invalid value for Asymmetric loss parameters. It should be in the range [0, 5]." % value)
+        return value
+
     parser = argparse.ArgumentParser(description="Multi-label classification with transformers")
-    parser.add_argument("--train_data", type=str, required=True, help="Path to the train data CSV file")
-    parser.add_argument("--test_data", type=str, required=True, help="Path to the test data CSV file")
-    parser.add_argument("--val_data", type=str, required=True, help="Path to the validation data CSV file")
-    parser.add_argument("--text_fields", type=str, nargs="+", default=['title', 'journal_name', 'abstract'], help="List of input text fields")
+    parser.add_argument("--train_data", type=str, required=True, help="Path to the train data parquet file")
+    parser.add_argument("--test_data", type=str, required=True, help="Path to the test data parquet file")
+    parser.add_argument("--val_data", type=str, required=True, help="Path to the validation data parquet file")
+    parser.add_argument("--text_fields", type=str, nargs="+", default=['title', 'normalized_venue_name', 'abstract'], help="List of input text fields")
     parser.add_argument("--save_path", type=str, required=True, help="Path to save the trained model")
     parser.add_argument("--train", type=str2bool, required=True, default=True, help="Run training or test evaluation only?")
     parser.add_argument("--model_checkpoint_path", type=str, required=False, default=None, help="Path to model checkpoints")
     parser.add_argument("--project_name", type=str, required=True, help="sciBert-finetune")
+    parser.add_argument("--batch_size", type=int, required=False, default=16, help="batch_size")
+    parser.add_argument("--learning_rate", type=float, required=False, default=1e-5, help="learning_rate")
+    parser.add_argument("--warmup_ratio", type=float, required=False, default=0.06, help="warmup_ratio")
+    parser.add_argument("--wandb_name", type=str, required=False, default='scibert_finetune_fos', help="")
+    parser.add_argument("--wandb_run_des", type=str, required=False, default="", help="")
+    parser.add_argument("--log_dir", type=str, required=False, default="/output", help="library where the logs are outputed to")
+    parser.add_argument("--loss", type=validate_loss, required=False, default=None, help="Name of the loss used for training possible values: Hill, Asymetric")
+
+    # Hill loss parameters
+    parser.add_argument("--hill_lamb", type=check_hill_loss, default=1.5)
+    parser.add_argument("--hill_margin", type=check_hill_loss, default=1.0)
+    parser.add_argument("--hill_gamma", type=check_hill_loss, default=2.0)
+    parser.add_argument("--hill_reduction", type=str, default="mean", choices=["mean", "sum"])
+
+    # Asymmetric loss parameters
+    parser.add_argument("--asym_gamma_neg", type=check_asymmetric_loss, default=4)
+    parser.add_argument("--asym_gamma_pos", type=check_asymmetric_loss, default=1)
+    parser.add_argument("--asym_clip", type=check_asymmetric_loss, default=0.05)
+    parser.add_argument("--asym_eps", type=float, default=1e-8)
+    parser.add_argument("--asym_disable_torch_grad_focal_loss", type=bool, default=False)
+
     args = parser.parse_args()
 
-    train_data = pd.read_csv(args.train_data)
-    train_data["labels"] = train_data["labels"].apply(lambda x: ast.literal_eval(x.replace(" ", ", ")))
-    test_data = pd.read_csv(args.test_data)
-    test_data["labels"] = test_data["labels"].apply(lambda x: ast.literal_eval(x.replace(" ", ", ")))
-    val_data = pd.read_csv(args.val_data)
-    val_data["labels"] = val_data["labels"].apply(lambda x: ast.literal_eval(x.replace(" ", ", ")))
+    hill_loss_params = {
+        "lamb": args.hill_lamb,
+        "margin": args.hill_margin,
+        "gamma": args.hill_gamma,
+        "reduction": args.hill_reduction
+    }
 
-    wandb_logger = WandbLogger(project=args.project_name, entity="egork")
+    asymmetric_loss_params = {
+        "gamma_neg": args.asym_gamma_neg,
+        "gamma_pos": args.asym_gamma_pos,
+        "clip": args.asym_clip,
+        "eps": args.asym_eps,
+        "disable_torch_grad_focal_loss": args.asym_disable_torch_grad_focal_loss
+    }
+    args = parser.parse_args()
+
+    train_data = pd.read_parquet(args.train_data)
+    test_data = pd.read_parquet(args.test_data)
+    val_data = pd.read_parquet(args.val_data)
+
+    wandb_logger = WandbLogger(project=args.project_name, entity="egork", name=args.wandb_name, notes=args.wandb_run_des)
     data_module = MultiLabelDataModule(
         train_df=train_data,
         val_df=val_data,
@@ -416,25 +476,38 @@ if __name__ == "__main__":
         text_fields=args.text_fields,
         model_name_or_path='allenai/scibert_scivocab_uncased',
         max_seq_length=128,
-        batch_size=16,
+        batch_size=args.batch_size,
         eval_batch_size=512,
         num_workers=4
     )
+    hill_loss = Hill(**hill_loss_params)
+    asymmetric_loss = AsymmetricLoss(**asymmetric_loss_params)
+
+    if args.loss.lower() == "hill":
+        loss = hill_loss
+    elif args.loss.lower() == "asymmetric":
+        loss = asymmetric_loss
+    else:
+        loss = None
+
+    print(f'Using loss: {args.loss}')
+    print(f'With parameters: {hill_loss_params if args.loss.lower() == "hill" else asymmetric_loss_params}')
 
     # Create a MultiLabelTransformer instance
     model = MultiLabelTransformer(
         model_name_or_path='allenai/scibert_scivocab_uncased',
         num_labels=data_module.num_labels,
-        learning_rate=1e-5,
+        learning_rate=args.learning_rate,
         adam_epsilon=1e-8,
-        warmup_ratio=0.06,
+        warmup_ratio=args.warmup_ratio,
         weight_decay=0.001,
+        loss=loss
     )
 
     # Create a ModelCheckpoint callback
     checkpoint_callback = pl_callbacks.ModelCheckpoint(
         dirpath=args.save_path,
-        filename="best-model-{epoch}",
+        filename="best-model-hyer-parameter-search-{epoch}",
         save_top_k=1,  # Save a checkpoint at each epoch
         verbose=True,
         monitor="val_average_precision",
@@ -449,10 +522,12 @@ if __name__ == "__main__":
         mode="max",  # "max" is for maximizing the metric and "min" for minimizing the metric
     )
 
-    wandb_logger = WandbLogger()
+    log_dir = "./"
+    csv_logger = CSVLogger(log_dir)
+
     callbacks = [checkpoint_callback, early_stop_callback, GradientsLogging()]
     # Train the model using PyTorch Lightning's Trainer with the ModelCheckpoint callback
-    trainer = Trainer(accelerator='gpu', devices=1, max_epochs=5, callbacks=callbacks, logger=wandb_logger)
+    trainer = Trainer(accelerator='gpu', devices=1, max_epochs=5, callbacks=callbacks, logger=[wandb_logger,csv_logger])
     if args.train:
       trainer.fit(model, data_module)
       trainer.test(model, datamodule=data_module)
@@ -467,4 +542,4 @@ if __name__ == "__main__":
         wandb_logger.experiment.name = model_name
         wandb_logger.experiment.save()  # Save the updated run name
         model = MultiLabelTransformer.load_from_checkpoint(os.path.join(model_checkpoint_path, model_name))
-    trainer.fit(model, data_module)
+        trainer.test(model, datamodule=data_module)
