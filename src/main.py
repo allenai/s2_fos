@@ -1,35 +1,3 @@
-# s2_fos
-
-Model code for Semantic Scholar's paper Field of Study classifier.
-
-Model uses fined-tuned SciBERT model to predict the field of study for a given paper.
-
-## Installation
-To install this package, run the following:
-
-```bash
-git clone https://github.com/allenai/s2_fos.git
-cd s2_fos
-conda create -y --name s2_fos python==3.8
-conda activate s2_fos
-# Install poetry
-curl -sSL https://install.python-poetry.org | python3 -
-poetry install
-```
-
-To obtain the necessary data, run these commands after the package is installed:
-
-```bash
-cd data
-# Download Langauge indentification model from [fasttext](https://fasttext.cc/docs/en/language-identification.html)
-wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin .
-cd ..
-```
-
-
-## Example
-
-```python
 from s2_fos.tt.interface import Instance, PredictorConfig, Predictor
 
 model_path = './data'
@@ -53,4 +21,4 @@ predictor = Predictor(config, artifacts_dir=model_path)
 
 predictions = predictor.predict_batch([instance])
 print(predictions)
-```
+

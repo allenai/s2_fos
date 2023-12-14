@@ -1,128 +1,53 @@
-import numpy as np
+"""
+Implement your model here! Or not.
+"""
 import os
-import sys
-import pickle
-import fasttext
-from typing import List
-from sklearn.pipeline import Pipeline
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.preprocessing import MultiLabelBinarizer
-from s2_fos.utils import detect_language, make_inference_text
+
+import torch
+import numpy as np
+from transformers import (
+    AutoTokenizer, AutoConfig, AutoModelForSequenceClassification,
+)
 
 
-# linearSVC has no predict_proba and MultiOutputClassifier has no decision_function
-# so we need this little wrapper
-class MultiOutputClassifierWithDecision(MultiOutputClassifier):
-    def decision_function(self, X):
-        results = [estimator.decision_function(X) for estimator in self.estimators_]
-        results = np.array(results).squeeze().T  # num_examples X num_classes
-        if len(results.shape) == 1:
-            return results.reshape(1, -1)  # squozen too hard
-        else:
-            return results
+class PredictProbabilities:
 
+    def __init__(self, model_path):
+        # Load the trained model and tokenizer
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if 'allenai/scibert_scivocab_uncased' not in model_path:
+            full_model_path = os.path.join(model_path, 'pytorch_model.bin')
 
-class S2FOS:
-    """
-    Loads in a trained classifier and TFIDF vectorizer.
-    Used to produce batches of classification predictions.
-    """
+        self.config = AutoConfig.from_pretrained(model_path)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            full_model_path, config=self.config)
+        self.model.to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained('allenai/scibert_scivocab_uncased',
+                                                       use_fast=True)
 
-    def __init__(self, data_dir):
+    def predict_labels_from_np(self, data_np: np.array) -> np.array:
+        """
+        Predicts probabilities of the FoS
+        Args:
+            data_np (np.array): numpy array of the title, abstract, journal_names
 
-        setattr(
-            sys.modules["__main__"], "MultiOutputClassifierWithDecision", MultiOutputClassifierWithDecision,
+        Returns: numpy array of probability scores for each of the fields of study
+
+        """
+        text = [f'{self.tokenizer.sep_token}'.join([(example[i] if example[i] is not None else '')
+                                                   for i in range(3)]) for example in data_np]
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=128,
         )
 
-        # to do: update file names when we change the file names
-        with open(os.path.join(data_dir, "model.pickle"), "rb") as f:
-            self._classifier = pickle.load(f)
+        if "token_type_ids" not in inputs:
+            inputs.pop("token_type_ids", None)
 
-        self._fasttext = fasttext.load_model(os.path.join(data_dir, "fasttext.bin"))
-
-        with open(os.path.join(data_dir, "feature_pipe.pickle"), "rb") as f:
-            self._feature_pipe, self._mlb = pickle.load(f)
-
-        # ensure that cached_dict has been built on mlb
-        self._mlb._cached_dict = dict(zip(self._mlb.classes_, range(len(self._mlb.classes_))))
-        self.mlb_inverse_dict = {v: k for k, v in self._mlb._cached_dict.items()}
-
-    def decision_function(self, papers):
-        """Decision scores for a list of papers
-
-        Args:
-            papers (list[dict]): A list of dictionaries with 'title' and 'abstract as keys
-
-        Returns:
-            scores (np.array): scores for each class for each paper
-        """
-        texts = [make_inference_text(paper) for paper in papers]
-
-        featurized_text = self._feature_pipe.transform(texts)
-        scores = self._classifier.decision_function(featurized_text)
-
-        return self.convert_score_row_to_dict(scores, self.mlb_inverse_dict)
-
-    def predict(self, papers):
-        """Predictions scores for a list of papers.
-        English detection is done first, and then this rule is applied to each prediction:
-
-        If paper is English:
-            If abstract exists:
-                If any scores > -0.2:
-                    Take all predictions with score > -0.2
-                Else:
-                    Take first prediction with score > -1.0
-            If no abstract exists:
-                Take first prediction with score > -0.2
-        Else:
-            No predictions
-
-        Args:
-            papers (list[dict]): A list of dictionaries with 'title' and 'abstract as keys
-
-        Returns:
-            scores (np.array): predictions above the thresholds for each class for each paper
-        """
-        texts = [make_inference_text(paper) for paper in papers]
-        english_flag = np.array([detect_language(self._fasttext, text)[1] for text in texts])
-        has_abstract = np.array([bool("abstract" in paper and paper["abstract"] is not None) for paper in papers])
-        decision_outputs = self.decision_function(papers)
-        predictions = []
-        for decision_output, english, abstract in zip(decision_outputs, english_flag, has_abstract):
-            pred = {}
-            if english:
-                classes = np.array(list(decision_output.keys()))
-                scores = np.array(list(decision_output.values()))
-                biggest_score_loc = np.argmax(scores)
-                biggest_score = scores[biggest_score_loc]
-                if abstract:
-                    if biggest_score > -0.2:
-                        scores_above = scores > -0.2
-                        pred = {classes[i]: scores[i] for i in np.where(scores_above)[0]}
-                    elif biggest_score > -1.0:
-                        pred[classes[biggest_score_loc]] = biggest_score
-                else:
-                    if biggest_score > -0.2:
-                        pred[classes[biggest_score_loc]] = biggest_score
-            predictions.append(pred)
-        return predictions
-
-    @staticmethod
-    def convert_score_row_to_dict(scores, mlb_inverse_dict):
-        """Convert a row of scores to a dictionary of predictions.
-
-        Args:
-            scores (np.array): scores for each class for each paper
-            mlb_inverse_dict (dict): mapping of class index to class name
-
-        Returns:
-            predictions (dict): predictions for each class for each paper
-        """
-        predictions = []
-        for score_row in scores:
-            pred = {}
-            for i in mlb_inverse_dict.keys():
-                pred[mlb_inverse_dict[i]] = score_row[i]
-            predictions.append(pred)
-        return predictions
+        inputs = {key: tensor.to(self.device) for key, tensor in inputs.items()}
+        outputs = self.model(**inputs)
+        predictions = torch.sigmoid(outputs.logits)
+        return np.array(predictions.detach().cpu().numpy())

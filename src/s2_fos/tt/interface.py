@@ -6,47 +6,83 @@ You must provide a wrapper around your model, as well
 as a definition of the objects it expects, and those it returns.
 """
 
-from typing import List, Optional
-from pydantic import BaseModel, BaseSettings, Field
-from s2_fos import S2FOS, make_inference_text, detect_language
+import numpy as np
+from typing import List, Optional, Dict, Union
+
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
+
+from s2_fos.model import PredictProbabilities
+from s2_fos import FOS_LIST
+from s2_language_detection.language_classifier import LanguageClassifier
 
 
 class Instance(BaseModel):
-    """Represents one paper for which we can predict fields of study"""
+    """
+    Describes one Instance over which the model performs inference.
 
-    title: str = Field(description="Title text for paper")
-    abstract: Optional[str] = Field(description="Abstract text for paper (optional)")
+    The fields below are examples only; please replace them with
+    appropriate fields for your model.
+
+    To learn more about declaring pydantic model fields, please see:
+    https://pydantic-docs.helpmanual.io/
+    """
+
+    text_title: str = Field(description="Title of the paper")
+    text_abstract: Optional[str] = Field(description="Abstract of the paper", default=None)
+    text_journal_name: Optional[str] = Field(description="Journal name of the paper", default=None)
+    text_venue_name: Optional[str] = Field(description="Venue name of the paper", default=None)
 
 
-class DecisionScore(BaseModel):
-    """Represents decision score predicted for a given field of study for a given paper"""
+class Score(BaseModel):
+    """
+    Describes the outcome of inference for one Instance
 
-    label: str
-    score: float
+    The fields below are examples only; please replace them with
+    appropriate fields for your model.
+
+    To learn more about declaring pydantic model fields, please see:
+    https://pydantic-docs.helpmanual.io/
+    """
+
+    label: str = Field(description="Predicted fields of study for the paper")
+    score: float = Field(description="Confidence scores for each field of study")
 
 
 class Prediction(BaseModel):
-    """Represents predicted scores for all fields of study for a given paper"""
+    """
+    Describes the outcome of inference for one Instance
 
-    scores: List[DecisionScore] = Field(description="Decision scores for all fields of study")
+    The fields below are examples only; please replace them with
+    appropriate fields for your model.
+
+    To learn more about declaring pydantic model fields, please see:
+    https://pydantic-docs.helpmanual.io/
+    """
+
+    field_of_studies_predicted_above_threshold: List[str] = Field(
+        description="Predicted fields of study for the paper"
+    )
+    scores: List[Score] = Field(description="Confidence scores for each field of study")
 
 
 class PredictorConfig(BaseSettings):
     """
-    The set of configuration parameters required to instantiate a predictor and
-    initialize it for inference. This is an appropriate place to specify any parameter
-    or configuration values your model requires that aren't packaged with your
-    versioned model artifacts. These should be rare beyond the included
-    `artifacts_dir`.
+    Configuration required by the model to do its work.
+    Uninitialized fields will be set via Environment variables.
 
-    Values for these config fields can be provided as environment variables, see:
-    `./docker.env`
+    The fields below are examples only; please replace them with ones
+    appropriate for your model. These serve as a record of the ENV
+    vars the consuming application needs to set.
     """
 
-    model_version: Optional[str] = Field(
-        description="Logical name for a model version or experiment, to segment and retrieve artifacts",
-        default=None,
-    )
+    # example_field: str = Field(default="asdf", description="Used to [...]")
+    thr_1: float = Field(default=0.552, description="Threshold for the first level")
+    thr_2: float = Field(default=0.621, description="Threshold for the second level")
+    thr_3: float = Field(default=0.7, description="Threshold for the second level")
+    thr_1_no_abstract: float = Field(default=0.621, description="Threshold for the first level no abstract")
+    thr_2_no_abstract: float = Field(default=0.655, description="Threshold for the second level no abstract")
+    thr_3_no_abstract: float = Field(default=0.7, description="Threshold for the third level no abstract")
 
 
 class Predictor:
@@ -69,6 +105,7 @@ class Predictor:
         self._config = config
         self._artifacts_dir = artifacts_dir
         self._load_model()
+        self._model_lan_classifier = LanguageClassifier(data_dir=self._artifacts_dir)
 
     def _load_model(self) -> None:
         """
@@ -76,7 +113,72 @@ class Predictor:
         model ready for inference. This operation is performed only once
         during the application life-cycle.
         """
-        self.model = S2FOS(self._artifacts_dir)
+        self._model = PredictProbabilities(model_path=self._artifacts_dir)
+
+    def set_labels(self,
+                   threshold_list_np: np.array,
+                   abstract_np: np.array,
+                   thr_1_w_abstract: float = 0.52,
+                   thr_2_w_abstract: float = 0.55,
+                   thr_3_w_abstract: float = 0.7,
+                   thr_1_no_abstract: float = 0.52,
+                   thr_2_no_abstract: float = 0.62,
+                   thr_3_no_abstract: float = 0.7
+                   ) -> np.array:
+        """
+        Threshold values are selected based on the max F1
+        Best micro-f1 score: ({'thr_1': 0.5172413793103449, 'thr_2': 0.5517241379310345, 'thr_3': 0.5862068965517241},
+        {'micro': 0.7919858573954036, 'macro': 0.7773981933829964, 'weighted': 0.8000682133515643})
+        micro: 0.85443
+        macro: 0.83920
+        weighted: 0.87635
+
+        For abstract missing
+        Best micro-f1 score: ({'thr_1': 0.5172413793103449, 'thr_2': 0.6206896551724138, 'thr_3': 0.6206896551724138},
+        {'micro': 0.7784503631961258, 'macro': 0.7374930547135901, 'weighted': 0.7847926929179073})
+        Average precision:
+        micro: 0.84874
+        macro: 0.81286
+        weighted: 0.86451
+        Args:
+            threshold_list_np ():
+            abstract_np ():
+            thr_1_w_abstract ():
+            thr_2_w_abstract ():
+            thr_3_w_abstract ():
+            thr_1_no_abstract ():
+            thr_2_no_abstract ():
+            thr_3_no_abstract ():
+
+        Returns:
+
+        """
+        argmax_idx = np.argpartition(-threshold_list_np, kth=5, axis=1)[:, :5]
+        assigned_labels = np.zeros(threshold_list_np.shape)
+        for row_idx, row in enumerate(threshold_list_np):
+            for idx_n, idx in enumerate(argmax_idx[row_idx]):
+                abstract = abstract_np[row_idx]
+                if abstract is None or abstract == "":
+                    if self._config.thr_1_no_abstract is not None or self._config.thr_2_no_abstract is not None:
+                        thr_1, thr_2, thr_3 = (self._config.thr_1_no_abstract, self._config.thr_2_no_abstract,
+                                               self._config.thr_3_no_abstract)
+                    else:
+                        thr_1, thr_2, thr_3 = (thr_1_no_abstract, thr_2_no_abstract, thr_3_no_abstract)
+                else:
+                    if self._config.thr_1 is not None or self._config.thr_2 is not None:
+                        thr_1, thr_2, thr_3 = self._config.thr_1, self._config.thr_2, self._config.thr_3
+                    else:
+                        thr_1, thr_2, thr_3 = thr_1_w_abstract, thr_2_w_abstract, thr_3_w_abstract
+
+                if row[idx] >= thr_1 and idx_n == 0:
+                    assigned_labels[row_idx, idx] = 1
+                elif row[idx] >= thr_2 and idx_n >= 1:
+                    assigned_labels[row_idx, idx] = 1
+                elif row[idx] >= thr_3 and idx_n >= 2:
+                    assigned_labels[row_idx, idx] = 1
+                else:
+                    assigned_labels[row_idx, idx] = 0
+        return assigned_labels
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
@@ -94,62 +196,40 @@ class Predictor:
         The size of the batches passed into this method is configurable
         via environment variable by the calling application.
         """
-        # expecting a list of dicts instaed of a list of Instances
-        papers = [dict(instance) for instance in instances]
-        texts = [make_inference_text(paper) for paper in papers]
-        english_flag = [detect_language(self.model._fasttext, text)[1] for text in texts]
-        decision_scores = self.model.decision_function(papers)
-        # now the output should be a prediction aka a list of DecisionScores
-        output = []
-        for decision_score, english in zip(decision_scores, english_flag):
-            if english:
-                output.append(
-                    Prediction(
-                        scores=[DecisionScore(label=label, score=score) for label, score in decision_score.items()]
-                    )
+        predictions = []
+        as_np_array = np.array([
+            [
+                instance.text_title,
+                instance.text_abstract,
+                instance.text_journal_name if instance.text_journal_name is not None else instance.text_venue_name,
+            ] for instance in instances
+        ], dtype=str)
+        language_predictions = self._model_lan_classifier.predict(as_np_array[:, :2])
+        # Predicting the labels
+        raw_predictions = self._model.predict_labels_from_np(as_np_array)
+        labels = self.set_labels(raw_predictions, as_np_array[:, 1])
+
+        # Predicting the fields of study
+        for idx, label_row in enumerate(labels.tolist()):
+            # Create Score objects for all fields of study with their corresponding scores
+            all_fos_scores = [Score(label=FOS_LIST[i], score=float(score)) for i, score in
+                              enumerate(raw_predictions[idx].tolist())]
+
+            # Sort all_fos_scores by score in descending order
+            all_fos_scores_sorted = sorted(all_fos_scores, key=lambda x: x.score, reverse=True)
+
+            # Check if the paper is in English
+            if language_predictions[idx][0] != "en":
+                predictions.append(
+                    Prediction(field_of_studies_predicted_above_threshold=[], scores=all_fos_scores_sorted)
                 )
             else:
-                output.append(Prediction(scores=[]))
-        return output
+                # Filter out the fields of study that are above the threshold and sort them by score
+                fos_above_threshold = [score.label for score in all_fos_scores_sorted if
+                                       label_row[FOS_LIST.index(score.label)]]
 
-
-if __name__ == "__main__":
-
-    instances = [
-        Instance(
-            title="Neural Networks are Great",
-            abstract="Neural networks are known to be really great models. You should use them.",
-        ),
-        Instance(
-            title="Cryptozoology for protein-folding metabolomics",
-            abstract="We show that cryptozoology is a great way to study protein folding. With 300 patients, we sequence their genomes.",
-        ),
-        Instance(
-            title="The Fate of All Oceans is Decided by the Whales",
-        ),
-        Instance(
-            title="すべてのネットワークの運命は、ランダムシードによって決定されます",
-            abstract="ネットワークは、ランダムシードによって決定されます。",
-        ),
-        Instance(
-            title="Precursor charge state prediction for electron transfer dissociation tandem mass spectra.",
-            abstract="Electron-transfer dissociation (ETD) induces fragmentation along the peptide backbone by transferring an electron from a radical anion to a protonated peptide. In contrast with collision-induced dissociation, side chains and modifications such as phosphorylation are left intact through the ETD process.",
-        ),
-        Instance(
-            title="Hannnah Arendt's 'Human Condition' or How to Survive in a Men's World",
-            abstract="In this paper I want to analyze Hannah Arendt’s concepts, described in her Human Condition, from a perspective which takes into consideration her own fragile identity, placed in a particular way under the sign of the major influence of Martin Heidegger and, generally, under the influence of the men-politicians and men-philosophers. The triangle labor-work-action dissimulates an informal tendency to hide the woman’s condition under the human condition. The feminine and maternal spirit finds its expression here too, protesting against the child and childhood politicizing idea.",
-        ),
-    ]
-
-    s2fos = Predictor(config=PredictorConfig(), artifacts_dir="./data")
-
-    predictions = s2fos.predict_batch(instances)
-
-    # matching a few things from the s2_fos README
-    # first one is CS
-    cs_pred_0 = [i for i in predictions[0].scores if i.label == "Computer science"][0]
-    assert cs_pred_0 == DecisionScore(label="Computer science", score=-0.21976448315303118)
-
-    # last one is philosophy
-    cs_pred_5 = [i for i in predictions[5].scores if i.label == "Philosophy"][0]
-    assert cs_pred_5 == DecisionScore(label="Philosophy", score=-0.4015553471152487)
+                predictions.append(
+                    Prediction(field_of_studies_predicted_above_threshold=fos_above_threshold,
+                               scores=all_fos_scores_sorted)
+                )
+        return predictions
