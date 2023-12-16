@@ -23,6 +23,7 @@ wandb = "*"
 pycld2 = "*"
 pydantic = "*"
 pydantic-settings = "*"
+numpy = "*"
 
 
 [build-system]
