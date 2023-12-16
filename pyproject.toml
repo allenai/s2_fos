@@ -9,7 +9,6 @@ license = 'Apache-2.0'
 readme = 'README.md'
 packages = [
     { include = "src", from = "." },
-    { include = "s2_language_detection", from = "." },
 ]
 
 [tool.poetry.dependencies]
@@ -21,7 +20,6 @@ pandas = "*"
 datasets = "*"
 transformers = "*"
 wandb = "*"
-fasttext = "*"
 pycld2 = "*"
 pydantic = "*"
 pydantic-settings = "*"
