@@ -12,11 +12,13 @@ from transformers import (
 
 class PredictProbabilities:
 
-    def __init__(self, model_path):
+    def __init__(self, model_path=None):
         # Load the trained model and tokenizer
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        if 'allenai/scibert_scivocab_uncased' not in model_path:
+        if model_path:
             full_model_path = os.path.join(model_path, 'pytorch_model.bin')
+        else:
+            full_model_path = 'allenai/scibert_scivocab_uncased_fielf_of_study'
 
         self.config = AutoConfig.from_pretrained(model_path)
         self.model = AutoModelForSequenceClassification.from_pretrained(

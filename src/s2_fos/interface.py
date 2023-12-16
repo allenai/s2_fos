@@ -7,13 +7,13 @@ as a definition of the objects it expects, and those it returns.
 """
 
 import numpy as np
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 from s2_fos.model import PredictProbabilities
-from s2_fos import FOS_LIST
+from s2_fos.constants import LABELS
 from s2_language_detection.language_classifier import LanguageClassifier
 
 
@@ -47,6 +47,9 @@ class Score(BaseModel):
 
     label: str = Field(description="Predicted fields of study for the paper")
     score: float = Field(description="Confidence scores for each field of study")
+
+    def to_dict(self):
+        return {self.label, self.score}
 
 
 class Prediction(BaseModel):
@@ -85,7 +88,7 @@ class PredictorConfig(BaseSettings):
     thr_3_no_abstract: float = Field(default=0.7, description="Threshold for the third level no abstract")
 
 
-class Predictor:
+class S2FOS:
     """
     Interface on to your underlying model.
 
@@ -99,13 +102,13 @@ class Predictor:
     """
 
     _config: PredictorConfig
-    _artifacts_dir: str
+    data_dir: str
 
-    def __init__(self, config: PredictorConfig, artifacts_dir: str):
-        self._config = config
-        self._artifacts_dir = artifacts_dir
+    def __init__(self, data_dir: str):
+        self._config = PredictorConfig()
+        self.data_dir = data_dir
         self._load_model()
-        self._model_lan_classifier = LanguageClassifier(data_dir=self._artifacts_dir)
+        self._model_lan_classifier = LanguageClassifier(data_dir=self.data_dir)
 
     def _load_model(self) -> None:
         """
@@ -113,7 +116,7 @@ class Predictor:
         model ready for inference. This operation is performed only once
         during the application life-cycle.
         """
-        self._model = PredictProbabilities(model_path=self._artifacts_dir)
+        self._model = PredictProbabilities(model_path=self.data_dir)
 
     def set_labels(self,
                    threshold_list_np: np.array,
@@ -207,12 +210,12 @@ class Predictor:
         language_predictions = self._model_lan_classifier.predict(as_np_array[:, :2])
         # Predicting the labels
         raw_predictions = self._model.predict_labels_from_np(as_np_array)
-        labels = self.set_labels(raw_predictions, as_np_array[:, 1])
+        labels = self.set_labels(raw_predictions, abstract_np=as_np_array[:, 1])
 
         # Predicting the fields of study
         for idx, label_row in enumerate(labels.tolist()):
             # Create Score objects for all fields of study with their corresponding scores
-            all_fos_scores = [Score(label=FOS_LIST[i], score=float(score)) for i, score in
+            all_fos_scores = [Score(label=LABELS[i], score=float(score)) for i, score in
                               enumerate(raw_predictions[idx].tolist())]
 
             # Sort all_fos_scores by score in descending order
@@ -226,10 +229,26 @@ class Predictor:
             else:
                 # Filter out the fields of study that are above the threshold and sort them by score
                 fos_above_threshold = [score.label for score in all_fos_scores_sorted if
-                                       label_row[FOS_LIST.index(score.label)]]
+                                       label_row[LABELS.index(score.label)]]
 
                 predictions.append(
                     Prediction(field_of_studies_predicted_above_threshold=fos_above_threshold,
                                scores=all_fos_scores_sorted)
                 )
         return predictions
+
+    def convert_dict_to_instances(self, papers: List[Dict[str, str]]) -> List[Instance]:
+        return [Instance(text_title=paper.get('title', ''),
+                         text_abstract=paper.get('abstract', ''),
+                         text_journal_name=paper.get('journal_name', ''),
+                         text_venue_name=paper.get('venue_name', '')) for paper in papers]
+
+    def predict(self, papers: List[Dict[str, str]]):
+        instances = self.convert_dict_to_instances(papers)
+        return [[score.to_dict() for score in prediction.scores]
+                for prediction in self.predict_batch(instances)]
+
+    def decision_function(self, papers: List[Dict[str, str]]) -> List[List[str]]:
+        instances = self.convert_dict_to_instances(papers)
+        return [prediction.field_of_studies_predicted_above_threshold
+                for prediction in self.predict_batch(instances)]
