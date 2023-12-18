@@ -1,9 +1,5 @@
 """
-This file contains the classes required by Semantic Scholar's
-TIMO tooling.
-
-You must provide a wrapper around your model, as well
-as a definition of the objects it expects, and those it returns.
+Interface class for the S2 FoS model
 """
 
 import numpy as np
@@ -84,7 +80,6 @@ class PredictorConfig(BaseSettings):
     vars the consuming application needs to set.
     """
 
-    # example_field: str = Field(default="asdf", description="Used to [...]")
     thr_1: float = Field(default=0.552, description="Threshold for the first level")
     thr_2: float = Field(default=0.621, description="Threshold for the second level")
     thr_3: float = Field(default=0.7, description="Threshold for the second level")
@@ -96,14 +91,6 @@ class PredictorConfig(BaseSettings):
 class S2FOS:
     """
     Interface on to your underlying model.
-
-    This class is instantiated at application startup as a singleton.
-    You should initialize your model inside of it, and implement
-    prediction methods.
-
-    If you specified an artifacts.tar.gz for your model, it will
-    have been extracted to `artifacts_dir`, provided as a constructor
-    arg below.
     """
 
     _config: PredictorConfig
@@ -201,7 +188,7 @@ class S2FOS:
 
         """
         text = [f'{self.tokenizer.sep_token}'.join([(example[i] if example[i] is not None else '')
-                                                   for i in range(3)]) for example in data_np]
+                                                    for i in range(3)]) for example in data_np]
         inputs = self.tokenizer(
             text,
             return_tensors="pt",
@@ -281,7 +268,7 @@ class S2FOS:
     def predict(self, papers: List[Dict[str, str]]):
         instances = self.convert_dict_to_instances(papers)
         return {'scores': [[score.to_dict() for score in prediction.scores]
-                for prediction in self.predict_batch(instances)],
+                           for prediction in self.predict_batch(instances)],
                 'fields_of_study_predicted': [prediction.field_of_studies_predicted_above_threshold
-                for prediction in self.predict_batch(instances)]
+                                              for prediction in self.predict_batch(instances)]
                 }
