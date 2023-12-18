@@ -7,12 +7,17 @@ as a definition of the objects it expects, and those it returns.
 """
 
 import numpy as np
+import torch
+
+import os
+from transformers import (
+    AutoTokenizer, AutoConfig, AutoModelForSequenceClassification,
+)
 from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
-from s2_fos.model import PredictProbabilities
 from s2_fos.constants import LABELS
 from s2_language_detection.language_classifier import LanguageClassifier
 
@@ -107,26 +112,35 @@ class S2FOS:
     def __init__(self, data_dir: str):
         self._config = PredictorConfig()
         self.data_dir = data_dir
-        self._load_model()
+        # Load the language classifier
         self._model_lan_classifier = LanguageClassifier(data_dir=self.data_dir)
 
-    def _load_model(self) -> None:
-        """
-        Perform whatever start-up operations are required to get your
-        model ready for inference. This operation is performed only once
-        during the application life-cycle.
-        """
-        self._model = PredictProbabilities(model_path=self.data_dir)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        # Define the model name and check if the model exists locally
+        model_name = 'allenai/scibert_scivocab_uncased_fielf_of_study'
+        model_path = os.path.join(self.data_dir, 'pytorch_model.bin')
+        config_path = os.path.join(self.data_dir, 'config.json')
+
+        # Check if the model and config files exist locally
+        if os.path.exists(model_path) and os.path.exists(config_path):
+            print("Loading the model from the data_dir")
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.data_dir, config=config_path)
+        else:
+            print("Model not found locally. Downloading from Hugging Face model hub.")
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+        # Load the tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained('allenai/scibert_scivocab_uncased',
+                                                       use_fast=True)
+
+        # Move the model to the appropriate device
+        self.model.to(self.device)
 
     def set_labels(self,
                    threshold_list_np: np.array,
                    abstract_np: np.array,
-                   thr_1_w_abstract: float = 0.52,
-                   thr_2_w_abstract: float = 0.55,
-                   thr_3_w_abstract: float = 0.7,
-                   thr_1_no_abstract: float = 0.52,
-                   thr_2_no_abstract: float = 0.62,
-                   thr_3_no_abstract: float = 0.7
                    ) -> np.array:
         """
         Threshold values are selected based on the max F1
@@ -146,12 +160,6 @@ class S2FOS:
         Args:
             threshold_list_np ():
             abstract_np ():
-            thr_1_w_abstract ():
-            thr_2_w_abstract ():
-            thr_3_w_abstract ():
-            thr_1_no_abstract ():
-            thr_2_no_abstract ():
-            thr_3_no_abstract ():
 
         Returns:
 
@@ -183,6 +191,33 @@ class S2FOS:
                     assigned_labels[row_idx, idx] = 0
         return assigned_labels
 
+    def predict_labels_from_np(self, data_np: np.array) -> np.array:
+        """
+        Predicts probabilities of the FoS
+        Args:
+            data_np (np.array): numpy array of the title, abstract, journal_names
+
+        Returns: numpy array of probability scores for each of the fields of study
+
+        """
+        text = [f'{self.tokenizer.sep_token}'.join([(example[i] if example[i] is not None else '')
+                                                   for i in range(3)]) for example in data_np]
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=128,
+        )
+
+        if "token_type_ids" not in inputs:
+            inputs.pop("token_type_ids", None)
+
+        inputs = {key: tensor.to(self.device) for key, tensor in inputs.items()}
+        outputs = self.model(**inputs)
+        predictions = torch.sigmoid(outputs.logits)
+        return np.array(predictions.detach().cpu().numpy())
+
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
         Method called by the client application. One or more Instances will
@@ -209,7 +244,7 @@ class S2FOS:
         ], dtype=str)
         language_predictions = self._model_lan_classifier.predict(as_np_array[:, :2])
         # Predicting the labels
-        raw_predictions = self._model.predict_labels_from_np(as_np_array)
+        raw_predictions = self.predict_labels_from_np(as_np_array)
         labels = self.set_labels(raw_predictions, abstract_np=as_np_array[:, 1])
 
         # Predicting the fields of study
@@ -245,10 +280,8 @@ class S2FOS:
 
     def predict(self, papers: List[Dict[str, str]]):
         instances = self.convert_dict_to_instances(papers)
-        return [[score.to_dict() for score in prediction.scores]
+        return {'scores': [[score.to_dict() for score in prediction.scores]
+                for prediction in self.predict_batch(instances)],
+                'fields_of_study_predicted': [prediction.field_of_studies_predicted_above_threshold
                 for prediction in self.predict_batch(instances)]
-
-    def decision_function(self, papers: List[Dict[str, str]]) -> List[List[str]]:
-        instances = self.convert_dict_to_instances(papers)
-        return [prediction.field_of_studies_predicted_above_threshold
-                for prediction in self.predict_batch(instances)]
+                }
