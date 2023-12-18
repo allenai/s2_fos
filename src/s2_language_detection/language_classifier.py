@@ -5,12 +5,18 @@ from typing import Union
 import fasttext
 import numpy.typing as npt
 
-FASTTEXT_FNAME = 'lid.176.bin'
+from s2_fos.constants import FASTTEXT_FNAME
 
 
 class LanguageClassifier:
     def __init__(self, data_dir):
         self.logger = logging.getLogger(__name__)
+        if not os.path.exists(os.path.join(data_dir, FASTTEXT_FNAME)):
+            raise FileNotFoundError(
+                f"Language classifier model {FASTTEXT_FNAME} not found in {data_dir} \n"
+                f"Please download the model from https://fasttext.cc/docs/en/language-identification.html"
+                f"and place it in {data_dir}")
+
         self.fasttext_model = fasttext.load_model(os.path.join(data_dir, FASTTEXT_FNAME))
 
     def predict(self, input_array: npt.ArrayLike) -> npt.ArrayLike:
