@@ -58,8 +58,15 @@ papers = [{'title': "A Prototype-Based Few-Shot Named Entity Recognition",
            }]
 
 predictor = S2FOS(data_dir=model_path)
-predictor.predict(papers)
-predictor.decision_function(papers)
+print(predictor.predict(papers))
+```
+## Development
+
+To run the tests, run
+
+```bash
+poetry shell
+poetry run pytest
 ```
 
 Python file train_net.py contains code for fine tuning the model
