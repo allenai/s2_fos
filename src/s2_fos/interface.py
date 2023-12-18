@@ -7,14 +7,14 @@ import torch
 
 import os
 from transformers import (
-    AutoTokenizer, AutoConfig, AutoModelForSequenceClassification,
+    AutoTokenizer, AutoModelForSequenceClassification,
 )
 from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
-from s2_fos.constants import LABELS
+from s2_fos.constants import LABELS, MODEL_NAME, TOKENIZER_MODEL_NAME, PROJECT_ROOT_PATH
 from s2_language_detection.language_classifier import LanguageClassifier
 
 
@@ -96,16 +96,15 @@ class S2FOS:
     _config: PredictorConfig
     data_dir: str
 
-    def __init__(self, data_dir: str):
+    def __init__(self, data_dir: str = 'data'):
         self._config = PredictorConfig()
-        self.data_dir = data_dir
+        self.data_dir = os.path.join(PROJECT_ROOT_PATH, data_dir)
         # Load the language classifier
         self._model_lan_classifier = LanguageClassifier(data_dir=self.data_dir)
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Define the model name and check if the model exists locally
-        model_name = 'allenai/scibert_scivocab_uncased_fielf_of_study'
         model_path = os.path.join(self.data_dir, 'pytorch_model.bin')
         config_path = os.path.join(self.data_dir, 'config.json')
 
@@ -116,10 +115,10 @@ class S2FOS:
                 self.data_dir, config=config_path)
         else:
             print("Model not found locally. Downloading from Hugging Face model hub.")
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
         # Load the tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained('allenai/scibert_scivocab_uncased',
+        self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_MODEL_NAME,
                                                        use_fast=True)
 
         # Move the model to the appropriate device

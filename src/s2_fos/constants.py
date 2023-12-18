@@ -1,4 +1,8 @@
+import os
+
 FASTTEXT_FNAME = 'lid.176.bin'
+
+MODEL_NAME = 'allenai/scibert_scivocab_uncased_fielf_of_study'
 
 LABELS = [
     'Agricultural and Food Sciences',
@@ -24,3 +28,11 @@ LABELS = [
     'Political Science',
     'Psychology',
     'Sociology']
+
+try:
+    PROJECT_ROOT_PATH = os.path.abspath(
+        os.path.join(__file__, os.pardir, os.pardir))
+except NameError:
+    PROJECT_ROOT_PATH = os.path.abspath(os.path.join(os.getcwd()))
+
+TOKENIZER_MODEL_NAME = 'allenai/scibert_scivocab_uncased'
