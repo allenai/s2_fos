@@ -1,3 +1,5 @@
+FASTTEXT_FNAME = 'lid.176.bin'
+
 LABELS = [
     'Agricultural and Food Sciences',
     'Art',
