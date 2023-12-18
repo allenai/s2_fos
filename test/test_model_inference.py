@@ -1,10 +1,17 @@
+import pytest
 from s2_fos import S2FOS
+import os
 
-if __name__ == "__main__":
+# Fixture for the S2FOS predictor
+@pytest.fixture(scope="module")
+def predictor():
+    model_path = os.path.join(os.path.dirname(__file__), '..', 'data')
+    return S2FOS(data_dir=model_path)
 
-    model_path = './data'
-
-    papers = [{'title': "A Prototype-Based Few-Shot Named Entity Recognition",
+# Test data
+test_data = [
+    (
+        [{'title': "A Prototype-Based Few-Shot Named Entity Recognition",
                'abstract': "Few-shot Named Entity Recognition (NER) task focuses on identifying name entities on a "
                                 "small amount of supervised training data. The work based on prototype network shows "
                                 "strong adaptability on the few-shot NER task. We think that the core idea of these "
@@ -17,13 +24,19 @@ if __name__ == "__main__":
                                 "tasks, while the ClusLoss has competitive performance on such tasks.",
                 'journal_name': "Proceedings of the 8th International Conference on Computing and Artificial Intelligence",
                'venue_name': ''
-               }]
+               }],
+        [['Computer Science']]
+    ),
+    ( [{'title': 'Большая энциклопедиа', 'abstract': 'энциклопедия',
+        'journal_name': 'Большая российская энциклопедия',
+        }],
+       [['']]
+      )
+    # Add more test cases here as needed
+]
 
-    predictor = S2FOS(data_dir=model_path)
-
-    print(f'Predictions for the papers {papers} \n'
-          f'\n ************* \n'
-          f'{predictor.predict(papers)}')
-
-    print('Decision function: \n')
-    print(predictor.decision_function(papers))
+# Parametrized test function
+@pytest.mark.parametrize("papers, expected", test_data)
+def test_predict(predictor, papers, expected):
+    predictions = predictor.predict(papers)
+    assert predictions['fields_of_study_predicted'] == expected
