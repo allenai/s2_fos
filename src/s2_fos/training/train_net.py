@@ -526,8 +526,11 @@ if __name__ == "__main__":
     csv_logger = CSVLogger(log_dir)
 
     callbacks = [checkpoint_callback, early_stop_callback, GradientsLogging()]
+
+    # Check if GPU is available
+    gpus = 1 if torch.cuda.is_available() else 0
     # Train the model using PyTorch Lightning's Trainer with the ModelCheckpoint callback
-    trainer = Trainer(accelerator='gpu', devices=1, max_epochs=5, callbacks=callbacks, logger=[wandb_logger,csv_logger])
+    trainer = Trainer(accelerator='gpu' if gpus else 'cpu', devices=1, max_epochs=5, callbacks=callbacks, logger=[wandb_logger,csv_logger])
     if args.train:
       trainer.fit(model, data_module)
       trainer.test(model, datamodule=data_module)
