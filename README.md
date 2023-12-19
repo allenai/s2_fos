@@ -26,13 +26,11 @@ pip install fasttext
 To obtain the necessary data, run these commands after the package is installed:
 
 ```bash
-mkdir data
+mkdir data # Create data directory in the root of the project
 # Download Langauge identification model from [fasttext](https://fasttext.cc/docs/en/language-identification.html)
 wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin ./data/
-# Download model and the model config from huggingface
-wget https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study/resolve/main/pytorch_model.bin?download=true ./data/
-wget https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study/resolve/main/config.json?download=true ./data/
 ```
+Location of the model on hugging face is [allenai/scibert_scivocab_uncased_fielf_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study)
 
 
 ## Inference Example Code
