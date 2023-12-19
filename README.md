@@ -1,6 +1,6 @@
 # s2_fos
 
-Code for the model of Semantic Scholar's paper Field of Study classifier.
+Code for scoring/training/training data generation of Semantic Scholar's paper Field of Study classifier.
 
 Model uses fined-tuned SciBERT model to predict the field of study for a given paper.
 
