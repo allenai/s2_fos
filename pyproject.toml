@@ -23,7 +23,7 @@ pycld2 = "*"
 pydantic = "*"
 pydantic-settings = "*"
 numpy = "*"
-openai = "0.28"
+openai = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
