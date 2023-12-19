@@ -13,7 +13,6 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-argparse = "*"
 scikit-learn = "*"
 pytorch_lightning = "*"
 pandas = "*"
@@ -24,6 +23,7 @@ pycld2 = "*"
 pydantic = "*"
 pydantic-settings = "*"
 numpy = "*"
+openai = "0.28"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
