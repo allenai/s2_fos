@@ -12,7 +12,7 @@ class LanguageClassifier:
     def __init__(self, data_dir: str = None):
         self.logger = logging.getLogger(__name__)
         if data_dir is None:
-            self.model_path = os.path.join(PROJECT_ROOT_PATH, data_dir, FASTTEXT_FNAME)
+            self.model_path = os.path.join(PROJECT_ROOT_PATH, os.pardir, 'data', FASTTEXT_FNAME)
         else:
             self.model_path = os.path.join(data_dir, FASTTEXT_FNAME)
         if not os.path.exists(self.model_path):

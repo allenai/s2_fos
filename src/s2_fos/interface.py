@@ -99,11 +99,11 @@ class S2FOS:
     def __init__(self, data_dir: str = None):
         self._config = PredictorConfig()
         if data_dir is None:
-            self.data_dir = os.path.join(PROJECT_ROOT_PATH, data_dir)
+            self.data_dir = os.path.join(PROJECT_ROOT_PATH, 'data')
         else:
             self.data_dir = data_dir
         # Load the language classifier
-        self._model_lan_classifier = LanguageClassifier(data_dir=self.data_dir)
+        self._model_lan_classifier = LanguageClassifier()
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
