@@ -96,9 +96,12 @@ class S2FOS:
     _config: PredictorConfig
     data_dir: str
 
-    def __init__(self, data_dir: str = 'data'):
+    def __init__(self, data_dir: str = None):
         self._config = PredictorConfig()
-        self.data_dir = os.path.join(PROJECT_ROOT_PATH, data_dir)
+        if data_dir is None:
+            self.data_dir = os.path.join(PROJECT_ROOT_PATH, data_dir)
+        else:
+            self.data_dir = data_dir
         # Load the language classifier
         self._model_lan_classifier = LanguageClassifier(data_dir=self.data_dir)
 

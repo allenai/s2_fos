@@ -9,9 +9,12 @@ from s2_fos.constants import FASTTEXT_FNAME, PROJECT_ROOT_PATH
 
 
 class LanguageClassifier:
-    def __init__(self, data_dir='data'):
+    def __init__(self, data_dir: str = None):
         self.logger = logging.getLogger(__name__)
-        self.model_path = os.path.join(PROJECT_ROOT_PATH, data_dir, FASTTEXT_FNAME)
+        if data_dir is None:
+            self.model_path = os.path.join(PROJECT_ROOT_PATH, data_dir, FASTTEXT_FNAME)
+        else:
+            self.model_path = os.path.join(data_dir, FASTTEXT_FNAME)
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(
                 f"Language classifier model {FASTTEXT_FNAME} not found in {PROJECT_ROOT_PATH} \n"
