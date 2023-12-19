@@ -23,6 +23,9 @@ sdist/
 var/
 wheels/
 share/python-wheels/
+data/.locks
+data/models--allenai--scibert_scivocab_uncased_fielf_of_study/*
+data/*bin
 *.egg-info/
 .installed.cfg
 *.egg

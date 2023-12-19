@@ -64,6 +64,7 @@ To run the tests, run
 poetry shell
 poetry run pytest
 ```
+Code in the test directory is almost identical to the above example code.
 
 ## Training
 Python file train_net.py contains code for model fine-tuning.
