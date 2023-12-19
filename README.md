@@ -7,6 +7,10 @@ Model uses fined-tuned SciBERT model to predict the field of study for a given p
 During inference
 -- First language of the paper is determined. If it is an English paper FoS fields and scores are predicted
 
+## Hugging face artifacts
+Model weights and config can be found under: [allenai/scibert_scivocab_uncased_fielf_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study)
+Training data/annotations/openAI response can be found under: [allenai/fos_model_training_data_open_ai_annotations](https://huggingface.co/datasets/allenai/fos_model_training_data_open_ai_annotations)
+
 ## Installation
 To install this package, run the following:
 
