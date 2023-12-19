@@ -40,8 +40,6 @@ wget https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study/reso
 ```python
 from s2_fos import S2FOS
 
-model_path = './data'
-
 papers = [{'title': "A Prototype-Based Few-Shot Named Entity Recognition",
            'abstract': "Few-shot Named Entity Recognition (NER) task focuses on identifying name entities on a "
                             "small amount of supervised training data. The work based on prototype network shows "
@@ -57,7 +55,7 @@ papers = [{'title': "A Prototype-Based Few-Shot Named Entity Recognition",
            'venue_name': ''
            }]
 
-predictor = S2FOS(data_dir=model_path)
+predictor = S2FOS()
 print(predictor.predict(papers))
 ```
 ## Development
