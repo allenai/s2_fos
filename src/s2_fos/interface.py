@@ -99,7 +99,7 @@ class S2FOS:
     def __init__(self, data_dir: str = None):
         self._config = PredictorConfig()
         if data_dir is None:
-            self.data_dir = os.path.join(PROJECT_ROOT_PATH, 'data')
+            self.data_dir = os.path.join(PROJECT_ROOT_PATH, os.pardir, 'data')
         else:
             self.data_dir = data_dir
         # Load the language classifier
@@ -107,18 +107,8 @@ class S2FOS:
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # Define the model name and check if the model exists locally
-        model_path = os.path.join(self.data_dir, 'pytorch_model.bin')
-        config_path = os.path.join(self.data_dir, 'config.json')
-
-        # Check if the model and config files exist locally
-        if os.path.exists(model_path) and os.path.exists(config_path):
-            print("Loading the model from the data_dir")
-            self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.data_dir, config=config_path)
-        else:
-            print("Model not found locally. Downloading from Hugging Face model hub.")
-            self.model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            MODEL_NAME, cache_dir=self.data_dir)
 
         # Load the tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_MODEL_NAME,
