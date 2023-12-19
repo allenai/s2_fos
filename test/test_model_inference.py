@@ -6,8 +6,7 @@ import os
 # Fixture for the S2FOS predictor
 @pytest.fixture(scope="module")
 def predictor():
-    model_path = os.path.join(os.path.dirname(__file__), '..', 'data')
-    return S2FOS(data_dir=model_path)
+    return S2FOS()
 
 
 # Test data
