@@ -73,7 +73,7 @@ Python file train_net.py contains code for fine tuning the model
 
 ## Training
 
-Fine tuning of the model should be done on appropriate GPU instance
+Fine-tuning of the model should be done on appropriate GPU instance
 
 ```bash
 python train_net.py --train_data <path to training data> --test_data <path to test data> \
@@ -83,6 +83,17 @@ python train_net.py --train_data <path to training data> --test_data <path to te
 --wandb_name <weights and biases run name> --wandb_run_des <run description> --log_dir <log directory>
 ```
 
-## Model performance on human evaluation
+## Calling OpenAI API
 
+To call OpenAI API, you need to set OPENAI_API_KEY environment variable to your API key
+
+Example file is located in src/s2_fos/training/open_ai_prompts.py:
+Run it with
+```bash
+poetry run python ./src/s2_fos/training/open_ai_prompts.py 
+```
+It reads the data from data/paper_title_abstract_example.json and writes the results to 
+data/paper_title_abstract_example_openai.json
+
+The OpenAI prompt is defined in src/s2_fos/training/open_ai_prompts.py
 
