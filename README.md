@@ -88,7 +88,7 @@ To call OpenAI API, you need to set OPENAI_API_KEY environment variable to your 
 Example file is located in src/s2_fos/training/open_ai_prompts.py:
 Run it with
 ```bash
-poetry
+poetry shell
 poetry run python ./src/s2_fos/training/open_ai_prompts.py 
 ```
 It reads the data from data/paper_title_abstract_example.json and writes the results to 
