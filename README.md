@@ -35,7 +35,7 @@ wget https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study/reso
 ```
 
 
-## Example
+## Inference Example Code
 
 ```python
 from s2_fos import S2FOS
@@ -69,12 +69,10 @@ poetry shell
 poetry run pytest
 ```
 
-Python file train_net.py contains code for fine tuning the model
-
 ## Training
+Python file train_net.py contains code for model fine-tuning.
 
-Fine-tuning of the model should be done on appropriate GPU instance
-
+To run the training, run the following command on appropriate GPU machine:
 ```bash
 python train_net.py --train_data <path to training data> --test_data <path to test data> \
 --val_data <path to validation data> --text_fields title abstract journal_name  --save_path <output_path> --train True \
@@ -83,7 +81,7 @@ python train_net.py --train_data <path to training data> --test_data <path to te
 --wandb_name <weights and biases run name> --wandb_run_des <run description> --log_dir <log directory>
 ```
 
-## Calling OpenAI API
+## Calling OpenAI API to generate training data
 
 To call OpenAI API, you need to set OPENAI_API_KEY environment variable to your API key
 
@@ -96,4 +94,12 @@ It reads the data from data/paper_title_abstract_example.json and writes the res
 data/paper_title_abstract_example_openai.json
 
 The OpenAI prompt is defined in src/s2_fos/training/open_ai_prompts.py
+
+## Training data
+Synthetic training data is generated using the code in src/s2_fos/training/open_ai_prompts.py
+
+Can be found in [allenai/fos_model_training_data_open_ai_annotations](https://huggingface.co/datasets/allenai/fos_model_training_data_open_ai_annotations) under fos_open_ai_labels.parquet
+
+## Fine-tuned model weights
+Fine-tuned model weights are available at [allenai/scibert_scivocab_uncased_fielf_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study)
 
