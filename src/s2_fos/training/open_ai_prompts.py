@@ -8,7 +8,8 @@ import json
 
 import numpy as np
 import re
-import openai
+from openai import OpenAI, OpenAIError
+
 import time
 import os
 from s2_fos.constants import LABELS, PROJECT_ROOT_PATH
@@ -20,7 +21,7 @@ RETRY_DELAY = 5  # Time in seconds to wait before retrying
 
 # Check and Set OpenAI API key
 if 'OPENAI_API_KEY' in os.environ:
-    openai.api_key = os.environ['OPENAI_API_KEY']
+    client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 else:
     raise Warning("OPENAI_API_KEY not found in environment variables. Please set it before running this script.")
 
@@ -32,7 +33,7 @@ def truncate_entity(entity, max_tokens=800):
     return ' '.join(tokens[:max_tokens]) if tokens and len(tokens) > max_tokens else entity
 
 def call_openai_api(model, messages, temperature=0):
-    return openai.ChatCompletion.create(model=model, messages=messages, temperature=temperature)
+    return client.chat.completions.create(model=model, messages=messages, temperature=temperature)
 
 def search_for_fos_response(response):
     return [field for field in LABELS if field in response]
@@ -59,25 +60,55 @@ def process_paper(paper_sha, title, abstract, journal_name, model, open_ai_calls
 
         for _ in range(MAX_RETRIES):
             try:
-                result = call_openai_api(model, messages, temperature=0)
-                if not search_for_fos_response(result['choices'][0]['message']['content']):
-                    assistant_reply1 = result['choices'][0]['message']['content'].replace("```", "``")
+                chat_completion = call_openai_api(model, messages, temperature=0)
+                message_content = chat_completion.choices[0].message.content
+                if not search_for_fos_response(message_content):
+                    assistant_reply1 = message_content.replace("```", "``")
                     content_string = (f"Can you please map your response {assistant_reply1} to the following fields: "
                                       f"{', '.join(LABELS)}")
                     messages.extend([
                         {"role": "user", "content": content_string},
                         {"role": "assistant", "content": "```python \n{'field_of_study': ["}
                     ])
-                    result = call_openai_api(model, messages, temperature=0)
-                open_ai_calls[key] = {'prompt': messages, 'result': result}
+                    chat_completion = call_openai_api(model, messages, temperature=0)
+                open_ai_calls[key] = {'prompt': messages,
+                                      'result': serialize_chat_completion(chat_completion)}
                 break
-            except openai.OpenAIError as e:
+            except OpenAIError as e:
                 print(f"Error: {e}")
                 time.sleep(RETRY_DELAY)
         else:
             print("Max retries reached. Skipping this API call.")
     return open_ai_calls
 
+# Convert the ChatCompletion object to a serializable dictionary
+def serialize_chat_completion(completion):
+    return {
+        "id": completion.id,
+        "choices": [
+            {
+                "finish_reason": choice.finish_reason,
+                "index": choice.index,
+                "logprobs": choice.logprobs,  # This might be None or another object that needs serialization
+                "message": {
+                    "content": choice.message.content,
+                    "role": choice.message.role,
+                    # Include other fields from ChatCompletionMessage if necessary
+                }
+            }
+            for choice in completion.choices
+        ],
+        "created": completion.created,
+        "model": completion.model,
+        "object": completion.object,
+        "system_fingerprint": completion.system_fingerprint,
+        "usage": {
+            "completion_tokens": completion.usage.completion_tokens,
+            "prompt_tokens": completion.usage.prompt_tokens,
+            "total_tokens": completion.usage.total_tokens,
+        } if completion.usage else None,
+        # Include other fields from ChatCompletion if necessary
+    }
 def save_openai_calls(open_ai_calls, filename):
     with open(filename, 'w') as file_handle:
         json.dump(open_ai_calls, file_handle)
@@ -106,7 +137,6 @@ def main():
         if (idx + 1) % 100 == 0:
             save_openai_calls(open_ai_calls, os.path.join(PROJECT_ROOT_PATH, '..', 'data',
                                                           f'open_ai_most_popular_{idx + 1}.json'))
-
     save_openai_calls(open_ai_calls,
                       os.path.join(PROJECT_ROOT_PATH, '..', 'data',
                                    'open_ai_most_popular_final.json'))
