@@ -3,7 +3,7 @@ name = 's2_fos'
 version = '0.0.2'
 description = 'S2FOS: Field of Study Classification for Scholarly Documents'
 authors = [
-    "Allen Institute for Artificial Intelligence <contact@allenai.org>"
+    "Allen Institute for Artificial Intelligence <egork@allenai.org>, <sergey@allenai.org>"
 ]
 license = 'Apache-2.0'
 readme = 'README.md'
