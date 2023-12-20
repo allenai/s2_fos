@@ -24,6 +24,8 @@ pydantic = "*"
 pydantic-settings = "*"
 numpy = "*"
 openai = "*"
+huggingface_hub = "*"
+pybind = "^2.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
