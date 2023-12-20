@@ -25,7 +25,7 @@ pydantic-settings = "*"
 numpy = "*"
 openai = "*"
 huggingface_hub = "*"
-pybind = "^2.2"
+black = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -47,3 +47,6 @@ testpaths = [
 pythonpath = [
     "src",
 ]
+
+[tool.pylint]
+max-line-length = 120
