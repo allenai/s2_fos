@@ -108,7 +108,7 @@ class S2FOS:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         self.model = AutoModelForSequenceClassification.from_pretrained(
-            MODEL_NAME, cache_dir=self.data_dir)
+            MODEL_NAME, cache_dir=self.data_dir,  use_auth_token=os.environ.get("HUGGINGFACE_HUB_TOKEN"))
 
         # Load the tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_MODEL_NAME,
