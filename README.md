@@ -26,16 +26,22 @@ poetry shell
 # we need to install it manually
 pip install fasttext
 ```
+If you have problems installing poetry refer to the [poetry documentation](https://python-poetry.org/docs/#installation)
 
 To obtain the necessary data, run these commands after the package is installed:
 
 ```bash
-mkdir data # Create data directory in the root of the project
 # Download Langauge identification model from [fasttext](https://fasttext.cc/docs/en/language-identification.html)
-wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin ./data/
+cd data & wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
 ```
 Location of the model on hugging face is [allenai/scibert_scivocab_uncased_fielf_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study)
+Before running the code, make sure to accept the license agreement.
 
+Once license agreement is accepted, you need to generate hugging face token and set it as HUGGINGFACE_HUB_TOKEN
+environment variable.
+```bash
+export HUGGINGFACE_HUB_TOKEN=<your token>
+```
 
 ## Inference Example Code
 
@@ -103,5 +109,18 @@ Synthetic training data is generated using the code in src/s2_fos/training/open_
 Can be found in [allenai/fos_model_training_data_open_ai_annotations](https://huggingface.co/datasets/allenai/fos_model_training_data_open_ai_annotations) under fos_open_ai_labels.parquet
 
 ## Fine-tuned model weights
-Fine-tuned model weights are available at [allenai/scibert_scivocab_uncased_fielf_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_fielf_of_study)
+Fine-tuned model weights are available at [allenai/scibert_scivocab_uncased_field_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_field_of_study)
 
+## How to fine-tune the model
+
+To fine tune the model 
+- Download the training data from [allenai/fos_model_training_data_open_ai_annotations](https://huggingface.co/datasets/allenai/fos_model_training_data_open_ai_annotations) under fos_open_ai_labels.parquet
+- Split the data into train, test and validation sets save them into separate parquet files
+- Update run.sh script by replacing the paths to the training, test and validation data with the paths to the files you created in the previous step
+- Update any other parameters in the run.sh script as needed replace <> with the appropriate values
+- Run the training code with the following parameters:
+```bash
+cd src/s2_fos/training
+poetry shell
+bash run.sh
+```
