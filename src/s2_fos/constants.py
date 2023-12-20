@@ -2,7 +2,7 @@ import os
 
 FASTTEXT_FNAME = 'lid.176.bin'
 
-MODEL_NAME = 'allenai/scibert_scivocab_uncased_fielf_of_study'
+MODEL_NAME = 'allenai/scibert_scivocab_uncased_field_of_study'
 
 LABELS = [
     'Agricultural and Food Sciences',
