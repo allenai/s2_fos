@@ -60,7 +60,6 @@ papers = [{'title': "A Prototype-Based Few-Shot Named Entity Recognition",
                             "state-of-the-art performance on the average F1 scores for both 1-shot and 5-shot NER "
                             "tasks, while the ClusLoss has competitive performance on such tasks.",
             'journal_name': "Proceedings of the 8th International Conference on Computing and Artificial Intelligence",
-           'venue_name': ''
            }]
 
 predictor = S2FOS()
