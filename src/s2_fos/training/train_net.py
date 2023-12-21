@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchmetrics.classification import MultilabelAUROC, MultilabelAveragePrecision
 from torch.optim import AdamW
 import os
-import json
+from huggingface_hub import hf_hub_download
 
 from transformers import (
     AutoConfig,
@@ -23,6 +23,7 @@ from transformers import (
     get_constant_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
+
 """
 ['Agricultural and Food sciences', 'Art', 'Biology', 'Business',
        'Chemistry', 'Computer science', 'Economics', 'Education',
@@ -32,15 +33,21 @@ from transformers import (
        'Political science', 'Psychology', 'Sociology']
 """
 
+
 class GradientsLogging(pl_callbacks.Callback):
     def on_after_backward(self, trainer, pl_module):
         if trainer.global_step % trainer.log_every_n_steps == 0:
             for name, params in pl_module.named_parameters():
                 if params.requires_grad and params.grad is not None:
                     trainer.logger.experiment.log(
-                        {f"gradients/{name}": wandb.Histogram(params.grad.detach().cpu())},
+                        {
+                            f"gradients/{name}": wandb.Histogram(
+                                params.grad.detach().cpu()
+                            )
+                        },
                         step=trainer.global_step,
                     )
+
 
 class Hill(nn.Module):
     r"""Hill as described in the paper "Robust Loss Design for Multi-Label Learning with Missing Labels "
@@ -57,7 +64,13 @@ class Hill(nn.Module):
         gamma (float): Commonly used value same as Focal loss. Default: 2
     """
 
-    def __init__(self, lamb: float = 1.5, margin: float = 1.0, gamma: float = 2.0, reduction: str = "mean") -> None:
+    def __init__(
+        self,
+        lamb: float = 1.5,
+        margin: float = 1.0,
+        gamma: float = 2.0,
+        reduction: str = "mean",
+    ) -> None:
         super().__init__()
         self.lamb = lamb
         self.margin = margin
@@ -102,7 +115,14 @@ class AsymmetricLoss(nn.Module):
     """Notice - optimized version, minimizes memory allocation and gpu uploading,
     favors inplace operations"""
 
-    def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False):
+    def __init__(
+        self,
+        gamma_neg=4,
+        gamma_pos=1,
+        clip=0.05,
+        eps=1e-8,
+        disable_torch_grad_focal_loss=False,
+    ):
         super().__init__()
 
         self.gamma_neg = gamma_neg
@@ -112,7 +132,9 @@ class AsymmetricLoss(nn.Module):
         self.eps = eps
 
         # prevent memory allocation and gpu uploading every iteration, and encourages inplace operations
-        self.targets = self.anti_targets = self.xs_pos = self.xs_neg = self.asymmetric_w = self.loss = None
+        self.targets = (
+            self.anti_targets
+        ) = self.xs_pos = self.xs_neg = self.asymmetric_w = self.loss = None
 
     def forward(self, x, y):
         """ "
@@ -144,13 +166,15 @@ class AsymmetricLoss(nn.Module):
             self.xs_pos = self.xs_pos * self.targets
             self.xs_neg = self.xs_neg * self.anti_targets
             self.asymmetric_w = torch.pow(
-                1 - self.xs_pos - self.xs_neg, self.gamma_pos * self.targets + self.gamma_neg * self.anti_targets
+                1 - self.xs_pos - self.xs_neg,
+                self.gamma_pos * self.targets + self.gamma_neg * self.anti_targets,
             )
             if self.disable_torch_grad_focal_loss:
                 torch.set_grad_enabled(True)
             self.loss *= self.asymmetric_w
 
         return -self.loss.mean()
+
 
 class MultiLabelDataModule(LightningDataModule):
     """Pytorch Lightning Data Module for MultiLabel classification."""
@@ -191,38 +215,79 @@ class MultiLabelDataModule(LightningDataModule):
         self.text_fields = text_fields
         self.num_labels = 23
         self.shuffle = shuffle
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name_or_path, use_fast=True
+        )
 
-    def setup(self, stage: str):
+    def download_data(self):
+        repo_id = "allenai/fos_model_training_data_open_ai_annotations"
+        subfolder = "fos_model_training_data/train"
+        filename = "dataset.arrow"
+
+        # Download the file
+        local_file_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            subfolder=subfolder,
+            repo_type="dataset",
+            use_auth_token=os.environ.get("HUGGINGFACE_HUB_TOKEN"),
+        )
+        # Load the dataset from the file
+        training_data = Dataset.from_file(local_file_path)
+        # Split the dataset into train, validation and test
+        train_test_split = training_data.train_test_split(test_size=0.3, seed=42)
+        test_val_split = train_test_split["test"].train_test_split(
+            test_size=0.5, seed=42
+        )
         self.dataset = {
-            "train": Dataset.from_pandas(self.train_df),
-            "val": Dataset.from_pandas(self.val_df),
-            "test": Dataset.from_pandas(self.test_df),
+            "train": train_test_split["train"],
+            "val": test_val_split["test"],
+            "test": train_test_split["test"],
         }
 
+    def setup(self, stage: str):
+        if self.train_df.empty or self.val_df.empty or self.test_df.empty:
+            self.download_data()
+        else:
+            self.dataset = {
+                "train": Dataset.from_pandas(self.train_df),
+                "val": Dataset.from_pandas(self.val_df),
+                "test": Dataset.from_pandas(self.test_df),
+            }
         for split in self.dataset.keys():
             self.dataset[split] = self.dataset[split].map(
                 self.convert_to_features,
                 batched=True,
             )
-            self.columns = [c for c in self.dataset[split].column_names if c in self.loader_columns]
+            self.columns = [
+                c for c in self.dataset[split].column_names if c in self.loader_columns
+            ]
             self.dataset[split].set_format(type="torch", columns=self.columns)
 
     def train_dataloader(self, shuffle=None):
         if shuffle is None:
             shuffle = self.shuffle
         return DataLoader(
-            self.dataset["train"], batch_size=self.batch_size, num_workers=self.num_workers, shuffle=shuffle
+            self.dataset["train"],
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=shuffle,
         )
 
     def val_dataloader(self):
         return DataLoader(
-            self.dataset["val"], batch_size=self.eval_batch_size, num_workers=self.num_workers, shuffle=False
+            self.dataset["val"],
+            batch_size=self.eval_batch_size,
+            num_workers=self.num_workers,
+            shuffle=False,
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.dataset["test"], batch_size=self.eval_batch_size, num_workers=self.num_workers, shuffle=False
+            self.dataset["test"],
+            batch_size=self.eval_batch_size,
+            num_workers=self.num_workers,
+            shuffle=False,
         )
 
     def convert_to_features(self, example_batch):
@@ -231,7 +296,17 @@ class MultiLabelDataModule(LightningDataModule):
         num_examples = len(example_batch[self.text_fields[0]])
         # For bert put seperated tokens from tokenizer tokenizer.sep_token
         text_examples = [
-            f'{self.tokenizer.sep_token}'.join([(example_batch[field][i] if example_batch[field][i] is not None else '') for field in self.text_fields]) for i in range(num_examples)
+            f"{self.tokenizer.sep_token}".join(
+                [
+                    (
+                        example_batch[field][i]
+                        if example_batch[field][i] is not None
+                        else ""
+                    )
+                    for field in self.text_fields
+                ]
+            )
+            for i in range(num_examples)
         ]
 
         features = self.tokenizer.batch_encode_plus(
@@ -265,15 +340,22 @@ class MultiLabelTransformer(LightningModule):
         self.scheduler = scheduler
         self.save_hyperparameters()
         if label_names is None:
-            self.config = AutoConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
+            self.config = AutoConfig.from_pretrained(
+                model_name_or_path, num_labels=num_labels
+            )
         else:
             id2label = {i: label_name for i, label_name in enumerate(label_names)}
             label2id = {val: key for key, val in id2label.items()}
             self.config = AutoConfig.from_pretrained(
-                model_name_or_path, num_labels=num_labels, id2label=id2label, label2id=label2id
+                model_name_or_path,
+                num_labels=num_labels,
+                id2label=id2label,
+                label2id=label2id,
             )
         self.config.hidden_dropout_prob = hidden_dropout_prob
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path, config=self.config)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            model_name_or_path, config=self.config
+        )
 
         if loss is None:
             self.loss = torch.nn.BCEWithLogitsLoss(reduction="mean")
@@ -284,7 +366,10 @@ class MultiLabelTransformer(LightningModule):
         if metrics is None:
             self.metrics = [
                 ("auroc", MultilabelAUROC(num_labels=self.num_labels)),
-                ("average_precision", MultilabelAveragePrecision(num_labels=self.num_labels)),
+                (
+                    "average_precision",
+                    MultilabelAveragePrecision(num_labels=self.num_labels),
+                ),
             ]
         else:
             self.metrics = []
@@ -302,11 +387,23 @@ class MultiLabelTransformer(LightningModule):
         loss = self.loss(outputs, labels)
         labels_int = labels.to(torch.int)  # Update this line as well
 
-        self.log(f"{phase}_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            f"{phase}_loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
         for metric_name, metric in self.metrics:
             loss_in_the_loop = metric(outputs, labels_int)
             self.log(
-                f"{phase}_{metric_name}", loss_in_the_loop, on_step=False, on_epoch=True, prog_bar=True, logger=True
+                f"{phase}_{metric_name}",
+                loss_in_the_loop,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
             )
         return {"loss": loss, "predictions": outputs, "labels": labels}
 
@@ -346,20 +443,32 @@ class MultiLabelTransformer(LightningModule):
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {
-                "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if not any(nd in n for nd in no_decay)
+                ],
                 "weight_decay": self.hparams.weight_decay,
             },
             {
-                "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if any(nd in n for nd in no_decay)
+                ],
                 "weight_decay": 0.0,
             },
         ]
         if self.optimizer == "adamw":
             optimizer = AdamW(
-                optimizer_grouped_parameters, lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon
+                optimizer_grouped_parameters,
+                lr=self.hparams.learning_rate,
+                eps=self.hparams.adam_epsilon,
             )
         else:
-            raise ValueError(f"Unknown optimizer {self.optimizer}. Currently only supporting adamw.")
+            raise ValueError(
+                f"Unknown optimizer {self.optimizer}. Currently only supporting adamw."
+            )
 
         if self.scheduler == "cosine":
             scheduler = get_cosine_schedule_with_warmup(
@@ -383,68 +492,149 @@ class MultiLabelTransformer(LightningModule):
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         return [optimizer], [scheduler]
 
+
 if __name__ == "__main__":
+
     def str2bool(v):
         if isinstance(v, bool):
-           return v
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return v
+        if v.lower() in ("yes", "true", "t", "y", "1"):
             return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        elif v.lower() in ("no", "false", "f", "n", "0"):
             return False
         else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
-
+            raise argparse.ArgumentTypeError("Boolean value expected.")
 
     def validate_loss(value):
-        if value not in ['Hill', 'Asymmetric', None]:
-            raise argparse.ArgumentTypeError(f"Invalid loss function. Expected one of: {value}")
+        if value not in ["Hill", "Asymmetric", None]:
+            raise argparse.ArgumentTypeError(
+                f"Invalid loss function. Expected one of: {value}"
+            )
         return value
-
 
     def check_hill_loss(value):
         value = float(value)
         if value < 0 or value > 3:
             raise argparse.ArgumentTypeError(
-                "%s is an invalid value for Hill loss parameters. It should be in the range [0, 3]." % value)
+                "%s is an invalid value for Hill loss parameters. It should be in the range [0, 3]."
+                % value
+            )
         return value
-
 
     def check_asymmetric_loss(value):
         value = float(value)
         if value < 0 or value > 5:
             raise argparse.ArgumentTypeError(
-                "%s is an invalid value for Asymmetric loss parameters. It should be in the range [0, 5]." % value)
+                "%s is an invalid value for Asymmetric loss parameters. It should be in the range [0, 5]."
+                % value
+            )
         return value
 
-    parser = argparse.ArgumentParser(description="Multi-label classification with transformers")
-    parser.add_argument("--train_data", type=str, required=True, help="Path to the train data parquet file")
-    parser.add_argument("--test_data", type=str, required=True, help="Path to the test data parquet file")
-    parser.add_argument("--val_data", type=str, required=True, help="Path to the validation data parquet file")
-    parser.add_argument("--text_fields", type=str, nargs="+", default=['title', 'normalized_venue_name', 'abstract'], help="List of input text fields")
-    parser.add_argument("--save_path", type=str, required=True, help="Path to save the trained model")
-    parser.add_argument("--train", type=str2bool, required=True, default=True, help="Run training or test evaluation only?")
-    parser.add_argument("--model_checkpoint_path", type=str, required=False, default=None, help="Path to model checkpoints")
-    parser.add_argument("--project_name", type=str, required=True, help="sciBert-finetune")
-    parser.add_argument("--batch_size", type=int, required=False, default=16, help="batch_size")
-    parser.add_argument("--learning_rate", type=float, required=False, default=1e-5, help="learning_rate")
-    parser.add_argument("--warmup_ratio", type=float, required=False, default=0.06, help="warmup_ratio")
-    parser.add_argument("--wandb_name", type=str, required=False, default='scibert_finetune_fos', help="")
-    parser.add_argument("--wandb_run_des", type=str, required=False, default="", help="")
-    parser.add_argument("--log_dir", type=str, required=False, default="/output", help="library where the logs are outputed to")
-    parser.add_argument("--loss", type=validate_loss, required=False, default=None, help="Name of the loss used for training possible values: Hill, Asymetric")
+    parser = argparse.ArgumentParser(
+        description="Multi-label classification with transformers"
+    )
+    parser.add_argument(
+        "--train_data",
+        type=str,
+        required=False,
+        help="Path to the train data parquet file",
+        default=None,
+    )
+    parser.add_argument(
+        "--test_data",
+        type=str,
+        required=False,
+        help="Path to the test data parquet file",
+        default=None,
+    )
+    parser.add_argument(
+        "--val_data",
+        type=str,
+        required=False,
+        help="Path to the validation data parquet file",
+        default=None,
+    )
+    parser.add_argument(
+        "--text_fields",
+        type=str,
+        nargs="+",
+        default=["title", "normalized_venue_name", "abstract"],
+        help="List of input text fields",
+    )
+    parser.add_argument(
+        "--save_path", type=str, required=True, help="Path to save the trained model"
+    )
+    parser.add_argument(
+        "--train",
+        type=str2bool,
+        required=True,
+        default=True,
+        help="Run training or test evaluation only?",
+    )
+    parser.add_argument(
+        "--model_checkpoint_path",
+        type=str,
+        required=False,
+        default=None,
+        help="Path to model checkpoints",
+    )
+    parser.add_argument(
+        "--project_name", type=str, required=True, help="sciBert-finetune"
+    )
+    parser.add_argument(
+        "--batch_size", type=int, required=False, default=16, help="batch_size"
+    )
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        required=False,
+        default=1e-5,
+        help="learning_rate",
+    )
+    parser.add_argument(
+        "--warmup_ratio", type=float, required=False, default=0.06, help="warmup_ratio"
+    )
+    parser.add_argument(
+        "--wandb_name",
+        type=str,
+        required=False,
+        default="scibert_finetune_fos",
+        help="",
+    )
+    parser.add_argument(
+        "--wandb_run_des", type=str, required=False, default="", help=""
+    )
+    parser.add_argument(
+        "--log_dir",
+        type=str,
+        required=False,
+        default="/output",
+        help="library where the logs are outputed to",
+    )
+    parser.add_argument(
+        "--loss",
+        type=validate_loss,
+        required=False,
+        default=None,
+        help="Name of the loss used for training possible values: Hill, Asymetric",
+    )
 
     # Hill loss parameters
     parser.add_argument("--hill_lamb", type=check_hill_loss, default=1.5)
     parser.add_argument("--hill_margin", type=check_hill_loss, default=1.0)
     parser.add_argument("--hill_gamma", type=check_hill_loss, default=2.0)
-    parser.add_argument("--hill_reduction", type=str, default="mean", choices=["mean", "sum"])
+    parser.add_argument(
+        "--hill_reduction", type=str, default="mean", choices=["mean", "sum"]
+    )
 
     # Asymmetric loss parameters
     parser.add_argument("--asym_gamma_neg", type=check_asymmetric_loss, default=4)
     parser.add_argument("--asym_gamma_pos", type=check_asymmetric_loss, default=1)
     parser.add_argument("--asym_clip", type=check_asymmetric_loss, default=0.05)
     parser.add_argument("--asym_eps", type=float, default=1e-8)
-    parser.add_argument("--asym_disable_torch_grad_focal_loss", type=bool, default=False)
+    parser.add_argument(
+        "--asym_disable_torch_grad_focal_loss", type=bool, default=False
+    )
 
     args = parser.parse_args()
 
@@ -452,7 +642,7 @@ if __name__ == "__main__":
         "lamb": args.hill_lamb,
         "margin": args.hill_margin,
         "gamma": args.hill_gamma,
-        "reduction": args.hill_reduction
+        "reduction": args.hill_reduction,
     }
 
     asymmetric_loss_params = {
@@ -460,25 +650,34 @@ if __name__ == "__main__":
         "gamma_pos": args.asym_gamma_pos,
         "clip": args.asym_clip,
         "eps": args.asym_eps,
-        "disable_torch_grad_focal_loss": args.asym_disable_torch_grad_focal_loss
+        "disable_torch_grad_focal_loss": args.asym_disable_torch_grad_focal_loss,
     }
     args = parser.parse_args()
+    if args.train_data is None or args.test_data is None or args.val_data is None:
+        train_data = pd.DataFrame(columns=[])
+        test_data = pd.DataFrame(columns=[])
+        val_data = pd.DataFrame(columns=[])
+    else:
+        train_data = pd.read_parquet(args.train_data)
+        test_data = pd.read_parquet(args.test_data)
+        val_data = pd.read_parquet(args.val_data)
 
-    train_data = pd.read_parquet(args.train_data)
-    test_data = pd.read_parquet(args.test_data)
-    val_data = pd.read_parquet(args.val_data)
-
-    wandb_logger = WandbLogger(project=args.project_name, entity="egork", name=args.wandb_name, notes=args.wandb_run_des)
+    wandb_logger = WandbLogger(
+        project=args.project_name,
+        entity="egork",
+        name=args.wandb_name,
+        notes=args.wandb_run_des,
+    )
     data_module = MultiLabelDataModule(
         train_df=train_data,
         val_df=val_data,
         test_df=test_data,
         text_fields=args.text_fields,
-        model_name_or_path='allenai/scibert_scivocab_uncased',
+        model_name_or_path="allenai/scibert_scivocab_uncased",
         max_seq_length=128,
         batch_size=args.batch_size,
         eval_batch_size=512,
-        num_workers=4
+        num_workers=4,
     )
     hill_loss = Hill(**hill_loss_params)
     asymmetric_loss = AsymmetricLoss(**asymmetric_loss_params)
@@ -490,18 +689,20 @@ if __name__ == "__main__":
     else:
         loss = None
 
-    print(f'Using loss: {args.loss}')
-    print(f'With parameters: {hill_loss_params if args.loss.lower() == "hill" else asymmetric_loss_params}')
+    print(f"Using loss: {args.loss}")
+    print(
+        f'With parameters: {hill_loss_params if args.loss.lower() == "hill" else asymmetric_loss_params}'
+    )
 
     # Create a MultiLabelTransformer instance
     model = MultiLabelTransformer(
-        model_name_or_path='allenai/scibert_scivocab_uncased',
+        model_name_or_path="allenai/scibert_scivocab_uncased",
         num_labels=data_module.num_labels,
         learning_rate=args.learning_rate,
         adam_epsilon=1e-8,
         warmup_ratio=args.warmup_ratio,
         weight_decay=0.001,
-        loss=loss
+        loss=loss,
     )
 
     # Create a ModelCheckpoint callback
@@ -530,19 +731,27 @@ if __name__ == "__main__":
     # Check if GPU is available
     gpus = 1 if torch.cuda.is_available() else 0
     # Train the model using PyTorch Lightning's Trainer with the ModelCheckpoint callback
-    trainer = Trainer(accelerator='gpu' if gpus else 'cpu', devices=1, max_epochs=5, callbacks=callbacks, logger=[wandb_logger,csv_logger])
+    trainer = Trainer(
+        accelerator="gpu" if gpus else "cpu",
+        devices=1,
+        max_epochs=5,
+        callbacks=callbacks,
+        logger=[wandb_logger, csv_logger],
+    )
     if args.train:
-      trainer.fit(model, data_module)
-      trainer.test(model, datamodule=data_module)
-    else:
-      model_checkpoint_path = args.model_checkpoint_path
-      # List all files in the model_checkpoint_path
-      all_files = os.listdir(model_checkpoint_path)
-      # Filter the files based on your criteria, e.g., file extension
-      # Replace '.pt' with the desired file extension for your model files
-      model_files = [file for file in all_files if file.endswith('.ckpt')]
-      for model_name in model_files:
-        wandb_logger.experiment.name = model_name
-        wandb_logger.experiment.save()  # Save the updated run name
-        model = MultiLabelTransformer.load_from_checkpoint(os.path.join(model_checkpoint_path, model_name))
+        trainer.fit(model, data_module)
         trainer.test(model, datamodule=data_module)
+    else:
+        model_checkpoint_path = args.model_checkpoint_path
+        # List all files in the model_checkpoint_path
+        all_files = os.listdir(model_checkpoint_path)
+        # Filter the files based on your criteria, e.g., file extension
+        # Replace '.pt' with the desired file extension for your model files
+        model_files = [file for file in all_files if file.endswith(".ckpt")]
+        for model_name in model_files:
+            wandb_logger.experiment.name = model_name
+            wandb_logger.experiment.save()  # Save the updated run name
+            model = MultiLabelTransformer.load_from_checkpoint(
+                os.path.join(model_checkpoint_path, model_name)
+            )
+            trainer.test(model, datamodule=data_module)
