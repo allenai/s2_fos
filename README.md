@@ -96,7 +96,8 @@ poetry shell
 bash run.sh
 ```
 Training data is downloaded from Hugging Face under the [ImpACT License Low Risk](https://allenai.org/licenses/impact-lr).
-The training data is split into train, test, and validation sets with the following ratios: 0.7/0.15/0.15.
+Training data is downloaded into `~/.cache/huggingface/hub/datasets--allenai--fos_model_training_data_open_ai_annotations` folder.
+The training data is split into train, test, and validation sets with the following ratios: 0.7/0.15/0.15 automatically.
 
 If you to provide training data manually you can use --train_data_path, --test_data_path, and --validation_data_path parameters.
 
