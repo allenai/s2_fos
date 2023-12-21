@@ -1,0 +1,52 @@
+[tool.poetry]
+name = 's2_fos'
+version = '0.0.2'
+description = 'S2FOS: Field of Study Classification for Scholarly Documents'
+authors = [
+    "Allen Institute for Artificial Intelligence <egork@allenai.org>, <sergey@allenai.org>"
+]
+license = 'Apache-2.0'
+readme = 'README.md'
+packages = [
+    { include = "s2_fos", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+scikit-learn = "*"
+pytorch_lightning = "*"
+pandas = "*"
+datasets = "*"
+transformers = "*"
+wandb = "*"
+pycld2 = "*"
+pydantic = "*"
+pydantic-settings = "*"
+numpy = "*"
+openai = "*"
+huggingface_hub = "*"
+black = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.urls]
+'Homepage' = 'https://www.github.com/allenai/s2_fos'
+'Repository' = 'https://www.github.com/allenai/s2_fos'
+'Bug Tracker' = 'https://www.github.com/allenai/s2_fos/issues'
+'Blog post' = 'https://blog.allenai.org/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5'
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    "src",
+]
+
+[tool.pylint]
+max-line-length = 120

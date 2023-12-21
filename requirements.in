@@ -1,9 +1,0 @@
-numpy
-scikit-learn==1.0.2
-sklearn-contrib-lightning==0.6.2.post0
-text_unidecode
-pandas
-fasttext
-pycld2
-pydantic
-pytest

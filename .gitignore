@@ -23,10 +23,16 @@ sdist/
 var/
 wheels/
 share/python-wheels/
+data/.locks
+data/models--allenai--scibert_scivocab_uncased_fielf_of_study/*
+data/*bin
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+poetry.lock
+./data/*.bin
+./data/*.json
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
