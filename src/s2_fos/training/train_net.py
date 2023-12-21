@@ -602,7 +602,7 @@ if __name__ == "__main__":
         help="",
     )
     parser.add_argument(
-        "--wandb_run_des", type=str, required=False, default="", help=""
+        "--wandb_run_desc", type=str, required=False, default="", help=""
     )
     parser.add_argument(
         "--log_dir",
@@ -666,7 +666,7 @@ if __name__ == "__main__":
         project=args.project_name,
         entity="egork",
         name=args.wandb_name,
-        notes=args.wandb_run_des,
+        notes=args.wandb_run_desc,
     )
     data_module = MultiLabelDataModule(
         train_df=train_data,
