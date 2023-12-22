@@ -7,7 +7,8 @@ import torch
 
 import os
 from transformers import (
-    AutoTokenizer, AutoModelForSequenceClassification,
+    AutoTokenizer,
+    AutoModelForSequenceClassification,
 )
 from typing import List, Optional, Dict
 
@@ -30,9 +31,15 @@ class Instance(BaseModel):
     """
 
     text_title: str = Field(description="Title of the paper")
-    text_abstract: Optional[str] = Field(description="Abstract of the paper", default=None)
-    text_journal_name: Optional[str] = Field(description="Journal name of the paper", default=None)
-    text_venue_name: Optional[str] = Field(description="Venue name of the paper", default=None)
+    text_abstract: Optional[str] = Field(
+        description="Abstract of the paper", default=None
+    )
+    text_journal_name: Optional[str] = Field(
+        description="Journal name of the paper", default=None
+    )
+    text_venue_name: Optional[str] = Field(
+        description="Venue name of the paper", default=None
+    )
 
 
 class Score(BaseModel):
@@ -83,9 +90,15 @@ class PredictorConfig(BaseSettings):
     thr_1: float = Field(default=0.552, description="Threshold for the first level")
     thr_2: float = Field(default=0.621, description="Threshold for the second level")
     thr_3: float = Field(default=0.7, description="Threshold for the second level")
-    thr_1_no_abstract: float = Field(default=0.621, description="Threshold for the first level no abstract")
-    thr_2_no_abstract: float = Field(default=0.655, description="Threshold for the second level no abstract")
-    thr_3_no_abstract: float = Field(default=0.7, description="Threshold for the third level no abstract")
+    thr_1_no_abstract: float = Field(
+        default=0.621, description="Threshold for the first level no abstract"
+    )
+    thr_2_no_abstract: float = Field(
+        default=0.655, description="Threshold for the second level no abstract"
+    )
+    thr_3_no_abstract: float = Field(
+        default=0.7, description="Threshold for the third level no abstract"
+    )
 
 
 class S2FOS:
@@ -99,28 +112,33 @@ class S2FOS:
     def __init__(self, data_dir: str = None):
         self._config = PredictorConfig()
         if data_dir is None:
-            self.data_dir = os.path.join(PROJECT_ROOT_PATH, os.pardir, 'data')
+            self.data_dir = os.path.join(PROJECT_ROOT_PATH, os.pardir, "data")
         else:
             self.data_dir = data_dir
         # Load the language classifier
         self._model_lan_classifier = LanguageClassifier()
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = AutoModelForSequenceClassification.from_pretrained(
-            MODEL_NAME, cache_dir=self.data_dir,  use_auth_token=os.environ.get("HUGGINGFACE_HUB_TOKEN"))
+            MODEL_NAME,
+            cache_dir=self.data_dir,
+            use_auth_token=os.environ.get("HUGGINGFACE_HUB_TOKEN"),
+        )
 
         # Load the tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_MODEL_NAME,
-                                                       use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            TOKENIZER_MODEL_NAME, use_fast=True
+        )
 
         # Move the model to the appropriate device
         self.model.to(self.device)
 
-    def set_labels(self,
-                   threshold_list_np: np.array,
-                   abstract_np: np.array,
-                   ) -> np.array:
+    def set_labels(
+        self,
+        threshold_list_np: np.array,
+        abstract_np: np.array,
+    ) -> np.array:
         """
         Threshold values are selected based on the max F1
         Best micro-f1 score: ({'thr_1': 0.5172413793103449, 'thr_2': 0.5517241379310345, 'thr_3': 0.5862068965517241},
@@ -149,16 +167,34 @@ class S2FOS:
             for idx_n, idx in enumerate(argmax_idx[row_idx]):
                 abstract = abstract_np[row_idx]
                 if abstract is None or abstract == "":
-                    if self._config.thr_1_no_abstract is not None or self._config.thr_2_no_abstract is not None:
-                        thr_1, thr_2, thr_3 = (self._config.thr_1_no_abstract, self._config.thr_2_no_abstract,
-                                               self._config.thr_3_no_abstract)
+                    if (
+                        self._config.thr_1_no_abstract is not None
+                        or self._config.thr_2_no_abstract is not None
+                    ):
+                        thr_1, thr_2, thr_3 = (
+                            self._config.thr_1_no_abstract,
+                            self._config.thr_2_no_abstract,
+                            self._config.thr_3_no_abstract,
+                        )
                     else:
-                        thr_1, thr_2, thr_3 = (thr_1_no_abstract, thr_2_no_abstract, thr_3_no_abstract)
+                        thr_1, thr_2, thr_3 = (
+                            thr_1_no_abstract,
+                            thr_2_no_abstract,
+                            thr_3_no_abstract,
+                        )
                 else:
                     if self._config.thr_1 is not None or self._config.thr_2 is not None:
-                        thr_1, thr_2, thr_3 = self._config.thr_1, self._config.thr_2, self._config.thr_3
+                        thr_1, thr_2, thr_3 = (
+                            self._config.thr_1,
+                            self._config.thr_2,
+                            self._config.thr_3,
+                        )
                     else:
-                        thr_1, thr_2, thr_3 = thr_1_w_abstract, thr_2_w_abstract, thr_3_w_abstract
+                        thr_1, thr_2, thr_3 = (
+                            thr_1_w_abstract,
+                            thr_2_w_abstract,
+                            thr_3_w_abstract,
+                        )
 
                 if row[idx] >= thr_1 and idx_n == 0:
                     assigned_labels[row_idx, idx] = 1
@@ -179,8 +215,12 @@ class S2FOS:
         Returns: numpy array of probability scores for each of the fields of study
 
         """
-        text = [f'{self.tokenizer.sep_token}'.join([(example[i] if example[i] is not None else '')
-                                                    for i in range(3)]) for example in data_np]
+        text = [
+            f"{self.tokenizer.sep_token}".join(
+                [(example[i] if example[i] is not None else "") for i in range(3)]
+            )
+            for example in data_np
+        ]
         inputs = self.tokenizer(
             text,
             return_tensors="pt",
@@ -214,13 +254,19 @@ class S2FOS:
         via environment variable by the calling application.
         """
         predictions = []
-        as_np_array = np.array([
+        as_np_array = np.array(
             [
-                instance.text_title,
-                instance.text_abstract,
-                instance.text_journal_name if instance.text_journal_name is not None else instance.text_venue_name,
-            ] for instance in instances
-        ], dtype=str)
+                [
+                    instance.text_title,
+                    instance.text_abstract,
+                    instance.text_journal_name
+                    if instance.text_journal_name is not None
+                    else instance.text_venue_name,
+                ]
+                for instance in instances
+            ],
+            dtype=str,
+        )
         language_predictions = self._model_lan_classifier.predict(as_np_array[:, :2])
         # Predicting the labels
         raw_predictions = self.predict_labels_from_np(as_np_array)
@@ -229,38 +275,60 @@ class S2FOS:
         # Predicting the fields of study
         for idx, label_row in enumerate(labels.tolist()):
             # Create Score objects for all fields of study with their corresponding scores
-            all_fos_scores = [Score(label=LABELS[i], score=float(score)) for i, score in
-                              enumerate(raw_predictions[idx].tolist())]
+            all_fos_scores = [
+                Score(label=LABELS[i], score=float(score))
+                for i, score in enumerate(raw_predictions[idx].tolist())
+            ]
 
             # Sort all_fos_scores by score in descending order
-            all_fos_scores_sorted = sorted(all_fos_scores, key=lambda x: x.score, reverse=True)
+            all_fos_scores_sorted = sorted(
+                all_fos_scores, key=lambda x: x.score, reverse=True
+            )
 
             # Check if the paper is in English
             if language_predictions[idx][0] != "en":
                 predictions.append(
-                    Prediction(field_of_studies_predicted_above_threshold=[], scores=all_fos_scores_sorted)
+                    Prediction(
+                        field_of_studies_predicted_above_threshold=[],
+                        scores=all_fos_scores_sorted,
+                    )
                 )
             else:
                 # Filter out the fields of study that are above the threshold and sort them by score
-                fos_above_threshold = [score.label for score in all_fos_scores_sorted if
-                                       label_row[LABELS.index(score.label)]]
+                fos_above_threshold = [
+                    score.label
+                    for score in all_fos_scores_sorted
+                    if label_row[LABELS.index(score.label)]
+                ]
 
                 predictions.append(
-                    Prediction(field_of_studies_predicted_above_threshold=fos_above_threshold,
-                               scores=all_fos_scores_sorted)
+                    Prediction(
+                        field_of_studies_predicted_above_threshold=fos_above_threshold,
+                        scores=all_fos_scores_sorted,
+                    )
                 )
         return predictions
 
     def convert_dict_to_instances(self, papers: List[Dict[str, str]]) -> List[Instance]:
-        return [Instance(text_title=paper.get('title', ''),
-                         text_abstract=paper.get('abstract', ''),
-                         text_journal_name=paper.get('journal_name', ''),
-                         text_venue_name=paper.get('venue_name', '')) for paper in papers]
+        return [
+            Instance(
+                text_title=paper.get("title", ""),
+                text_abstract=paper.get("abstract", ""),
+                text_journal_name=paper.get("journal_name", ""),
+                text_venue_name=paper.get("venue_name", ""),
+            )
+            for paper in papers
+        ]
 
     def predict(self, papers: List[Dict[str, str]]):
         instances = self.convert_dict_to_instances(papers)
-        return {'scores': [[score.to_dict() for score in prediction.scores]
-                           for prediction in self.predict_batch(instances)],
-                'fields_of_study_predicted': [prediction.field_of_studies_predicted_above_threshold
-                                              for prediction in self.predict_batch(instances)]
-                }
+        return {
+            "scores": [
+                [score.to_dict() for score in prediction.scores]
+                for prediction in self.predict_batch(instances)
+            ],
+            "fields_of_study_predicted": [
+                prediction.field_of_studies_predicted_above_threshold
+                for prediction in self.predict_batch(instances)
+            ],
+        }
