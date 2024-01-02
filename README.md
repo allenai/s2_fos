@@ -7,7 +7,7 @@ During inference:
 - The language of the paper is first determined. If the paper is in English, the Field of Study categories and their corresponding scores are predicted.
 
 ## Installation
-To install this package, run the following commands:
+To install this package with `poetry`, run the following commands:
 
 ```bash
 git clone https://github.com/allenai/s2_fos.git
@@ -24,6 +24,16 @@ pip install fasttext
 
 If you encounter problems installing Poetry, please refer to the [Poetry documentation](https://python-poetry.org/docs/#installation).
 
+Alternatively, you can install with anaconda:
+```bash
+git clone https://github.com/allenai/s2_fos.git
+cd s2_fos
+conda create -y --name s2fos python==3.8
+conda activate s2fos
+pip install -e .
+pip install fasttext
+```
+
 To obtain the necessary data, run these commands after the package is installed:
 
 ```bash
@@ -33,24 +43,35 @@ cd data && wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.17
 
 ## Hugging Face Artifacts
 Model weights, training data, and annotations are available on Hugging Face under the [ImpACT License Low Risk](https://allenai.org/licenses/impact-lr).
-To download the model weights and training data:
-- You need to accept the license agreement and create a Hugging Face account.
-- You need to generate a Hugging Face token and set it as the HUGGINGFACE_HUB_TOKEN environment variable.
 
 Model weights and config can be found under: [allenai/scibert_scivocab_uncased_field_of_study](https://huggingface.co/allenai/scibert_scivocab_uncased_field_of_study)
+
 Training data, annotations, and OpenAI responses can be found under: [allenai/fos_model_training_data_open_ai_annotations](https://huggingface.co/datasets/allenai/fos_model_training_data_open_ai_annotations)
+
+To be able to access the model weights and training data:
+- If you don't have one, create an [Hugging Face account](https://huggingface.co).
+- If you don't have one, generate [a Hugging Face token](https://huggingface.co/settings/tokens).
+- While logged in, click on both of the model weights and data links above and accept the license agreements.
 
 Set your Hugging Face token as an environment variable with the following command (replace `<your_token>` with your actual token):
 
 ```bash
 export HUGGINGFACE_HUB_TOKEN=<your_token>
 ```
+
+Or set the token in Python before importing from `s2_fos`:
+```
+import os
+os.environ['HUGGINGFACE_HUB_TOKEN'] = '<your_token>'
+```
+
 ## Inference Example Code
 
 ```python
 from s2_fos import S2FOS
 
 # Example paper data
+# note that journal_name is just a convention - it can be any venue like NeurIPS, arxiv, etc
 papers = [{
     'title': "A Prototype-Based Few-Shot Named Entity Recognition",
     'abstract': ("Few-shot Named Entity Recognition (NER) task focuses on identifying named entities with "
@@ -75,11 +96,17 @@ print(predictor.predict(papers))
 
 ## Development
 
-To run the tests, execute the following commands:
+To run the tests with anaconda, execute the following commands:
 
 ```bash
 poetry shell
 poetry run pytest
+```
+
+Or with anaconda:
+```bash
+pip install pytest
+pytest test
 ```
 
 ## Training
